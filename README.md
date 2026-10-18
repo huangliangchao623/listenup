@@ -1,10 +1,29 @@
 # ListenUp · 英语听力训练
 
+[![测试](https://github.com/huangliangchao623/listenup/actions/workflows/test.yml/badge.svg)](https://github.com/huangliangchao623/listenup/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-3776ab.svg)](https://www.python.org/)
+
 > 把任意视频/播客变成**可逐句精听**的听力材料。粘贴一个 B 站链接，或导入本地视频，
 > 软件自动分离音轨、识别语音、按语义切成一句一句，点哪句听哪句，支持单句循环、
 > 变速、隐藏字幕。带多用户账号体系，电脑开服务，手机扫码就能用。
 
 一个**本地优先**的工具：所有音频处理、语音识别都跑在你自己电脑上，不依赖任何云服务。
+
+---
+
+## 界面
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/01-素材库.png" alt="素材库"><br><sub>素材库：继续学习卡片、数据概览、按平台配色的封面</sub></td>
+<td width="50%"><img src="docs/images/02-学习页.png" alt="学习页"><br><sub>学习页：左侧播放器 + 右侧逐句列表，当前句高亮，每句带时长</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/04-手机端.png" alt="手机端"><br><sub>手机端自适应，扫码即用</sub></td>
+<td><img src="docs/images/05-控制台诊断.png" alt="控制台"><br><sub>桌面控制台：19 项环境自检，缺什么、该装什么一目了然</sub></td>
+</tr>
+</table>
 
 ---
 
@@ -106,6 +125,9 @@ python app/run.py --port 8765 --log
 ---
 
 ## 它是怎么把语音切成"一句一句"的
+
+> 完整分析见 **[docs/句子切分算法.md](docs/句子切分算法.md)** —— 包含实测数据、
+> 五条规则的推导过程、所有边界情况，以及为什么这条路的上限就在 70% 左右。
 
 这是整个项目最费劲的部分，也是踩坑最多的地方。
 
