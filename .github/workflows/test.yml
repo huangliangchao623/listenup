@@ -70,8 +70,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: 只测切句算法
+        # working-directory 已经是 app/，所以路径里不要再带 app/ 前缀
         run: |
-          python -m unittest app/tests/test_sentences.py -v
+          python -m unittest tests.test_sentences -v
         working-directory: app
         env:
           PYTHONPATH: .
