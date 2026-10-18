@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">听力训练</string>
+    <string name="setup_title">连接你的电脑</string>
+    <string name="setup_hint">http://你的地址:端口/</string>
+    <string name="setup_tip">填入电脑上「听力训练」显示的地址。\n在家用局域网地址，在外面用内网穿透地址。</string>
+    <string name="btn_ok">连接</string>
+    <string name="btn_change">修改地址</string>
+    <string name="btn_retry">重试</string>
+    <string name="err_title">连不上电脑</string>
+</resources>

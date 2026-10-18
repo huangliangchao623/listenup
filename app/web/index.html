@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>听力训练</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/auth.css">
+<link rel="stylesheet" href="/static/visual.css">
+</head>
+<body>
+
+<!-- 自定义背景层 -->
+<div id="bg-layer" class="bg-aurora"></div>
+
+<!-- ───────────────────────── 登录 / 注册 ───────────────────────── -->
+<div id="auth-overlay" class="hidden">
+  <div class="auth-card">
+    <div class="auth-logo">🎧</div>
+    <h2 class="auth-title" id="auth-title">欢迎回来</h2>
+    <p class="auth-sub" id="auth-sub">登录后继续你的听力训练</p>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <div class="auth-field">
+      <label for="auth-username">用户名</label>
+      <input id="auth-username" class="auth-input" type="text"
+             autocomplete="username" placeholder="输入用户名或邮箱" maxlength="40">
+    </div>
+
+    <div class="auth-field" id="auth-email-field" style="display:none">
+      <label for="auth-email">邮箱（选填）</label>
+      <input id="auth-email" class="auth-input" type="email"
+             autocomplete="email" placeholder="用于找回账号" maxlength="80">
+    </div>
+
+    <div class="auth-field">
+      <label for="auth-password">密码</label>
+      <input id="auth-password" class="auth-input" type="password"
+             autocomplete="current-password" placeholder="至少 6 位">
+    </div>
+
+    <button id="auth-submit" class="auth-btn">登录</button>
+
+    <p class="auth-switch">
+      <span id="auth-switch-text">还没有账号？</span>
+      <a id="auth-switch-link">立即注册</a>
+    </p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 素材库 ───────────────────────── -->
+<main id="view-library" class="view active">
+  <header class="topbar">
+    <h1>素材库</h1>
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <button id="btn-avatar" class="avatar-btn" aria-label="个人中心">我</button>
+      <button id="btn-add" class="icon-btn" aria-label="导入">＋</button>
+    </div>
+  </header>
+
+  <div class="searchbar" id="searchbar">
+    <span class="ico">🔍</span>
+    <input id="search-input" type="search" placeholder="搜索素材标题…" autocomplete="off">
+    <button class="clear" id="search-clear" aria-label="清除">✕</button>
+  </div>
+
+  <div class="filter-row" id="filter-row">
+    <button class="chip-btn active" data-filter="all">全部</button>
+    <button class="chip-btn" data-filter="bilibili">B 站</button>
+    <button class="chip-btn" data-filter="local">本地</button>
+    <button class="chip-btn" data-filter="video">含视频</button>
+    <button class="chip-btn" data-filter="unfinished">未学完</button>
+  </div>
+
+  <!-- 继续学习：整页最重要的入口，放在最显眼的位置 -->
+  <div id="hero-wrap" class="hero-wrap hidden"></div>
+
+  <!-- 数据概览 -->
+  <div id="stat-strip" class="stat-strip hidden"></div>
+
+  <!-- 列表小标题 -->
+  <div class="section-head hidden" id="section-head">
+    <h2>全部素材</h2>
+    <span class="section-count" id="section-count"></span>
+  </div>
+
+  <div id="library-empty" class="empty hidden">
+    <div class="empty-illustration">
+      <div class="ei-ring"></div>
+      <div class="ei-ring r2"></div>
+      <div class="ei-icon">🎧</div>
+    </div>
+    <p class="empty-title">还没有素材</p>
+    <p class="empty-sub">粘贴一个 B 站链接，或导入本地视频<br>软件会自动切好每一句</p>
+    <button class="primary-btn" data-open-import>开始导入</button>
+  </div>
+
+  <div id="lesson-list" class="card-list"></div>
+</main>
+
+<!-- ───────────────────────── 学习页 ───────────────────────── -->
+<main id="view-study" class="view">
+  <header class="topbar study-topbar">
+    <button id="btn-back" class="icon-btn" aria-label="返回">←</button>
+    <div class="study-title">
+      <div id="study-title-text" class="ellipsis"></div>
+      <div id="study-meta" class="study-meta"></div>
+    </div>
+    <button id="btn-more" class="icon-btn" aria-label="更多">⋯</button>
+  </header>
+
+  <div id="player-wrap" class="player-wrap">
+    <video id="video" playsinline preload="metadata"></video>
+    <div id="player-placeholder" class="player-placeholder">
+      <div class="wave">🎧</div>
+      <div id="player-placeholder-text">音频模式</div>
+    </div>
+  </div>
+
+  <div class="transport">
+    <button id="btn-prev" class="t-btn" aria-label="上一句">⏮</button>
+    <button id="btn-play" class="t-btn t-play" aria-label="播放/暂停">▶</button>
+    <button id="btn-next" class="t-btn" aria-label="下一句">⏭</button>
+    <div class="time">
+      <span id="time-cur">0:00</span><span class="time-sep">/</span><span id="time-total">0:00</span>
+    </div>
+    <button id="btn-rate" class="t-chip">1.0x</button>
+    <button id="btn-loop" class="t-chip" title="单句循环">🔁</button>
+  </div>
+
+  <div class="seek-wrap">
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="进度">
+    <div id="seek-marks" class="seek-marks"></div>
+  </div>
+
+  <!-- 整篇学习进度：已播完多少句 -->
+  <div class="sent-progress">
+    <div class="track"><i id="sent-progress-fill" style="width:0%"></i></div>
+    <span class="txt" id="sent-progress-text">已完成 0%</span>
+  </div>
+
+  <div class="sentence-toolbar">
+    <span id="sentence-counter" class="counter">0 / 0</span>
+    <label class="switch"><input id="opt-auto" type="checkbox" checked><span>自动下一句</span></label>
+    <label class="switch"><input id="opt-hide" type="checkbox"><span>隐藏字幕</span></label>
+    <label class="switch"><input id="opt-cn" type="checkbox"><span>中文</span></label>
+  </div>
+
+  <div id="sentence-list" class="sentence-list"></div>
+</main>
+
+<!-- ───────────────────────── 进度 ───────────────────────── -->
+<main id="view-progress" class="view">
+  <header class="topbar"><h1>学习进度</h1></header>
+  <div id="stats-grid" class="stats-grid"></div>
+  <h2 class="section-title">最近学习</h2>
+  <div id="heatmap" class="heatmap"></div>
+  <h2 class="section-title">各素材进度</h2>
+  <div id="progress-list" class="card-list"></div>
+</main>
+
+<!-- ───────────────────────── 设置 ───────────────────────── -->
+<main id="view-settings" class="view">
+  <header class="topbar"><h1>设置</h1></header>
+
+  <!-- 个人中心 -->
+  <section class="setting-group">
+    <div class="profile-head">
+      <div id="profile-avatar" class="profile-avatar">我</div>
+      <div style="flex:1;min-width:0">
+        <div id="profile-name" class="profile-name">未登录</div>
+        <div id="profile-meta" class="profile-meta">—</div>
+      </div>
+      <button id="btn-edit-name" class="ghost-btn small">改昵称</button>
+    </div>
+    <button id="btn-logout" class="logout-btn">退出登录</button>
+  </section>
+
+  <!-- 背景自定义 -->
+  <section class="setting-group">
+    <h2 class="section-title">背景</h2>
+    <div class="bg-grid" id="bg-grid">
+      <div class="bg-swatch bg-aurora" data-bg="aurora" title="极光"></div>
+      <div class="bg-swatch bg-ocean"  data-bg="ocean"  title="深海"></div>
+      <div class="bg-swatch bg-sunset" data-bg="sunset" title="日落"></div>
+      <div class="bg-swatch bg-forest" data-bg="forest" title="森林"></div>
+      <div class="bg-swatch bg-mono"   data-bg="mono"   title="夜色"></div>
+      <div class="bg-swatch custom" id="bg-upload" title="上传自己的图片">＋</div>
+    </div>
+    <input type="file" id="bg-file" accept="image/*" style="display:none">
+    <p class="hint" id="bg-hint">选一个内置背景，或点「＋」上传自己的图片（建议 2 MB 以内）</p>
+  </section>
+
+  <section class="setting-group">
+    <h2 class="section-title">播放</h2>
+    <label class="setting-row">
+      <span>默认自动下一句</span>
+      <input id="set-auto" type="checkbox" checked>
+    </label>
+    <label class="setting-row">
+      <span>默认单句循环</span>
+      <input id="set-loop" type="checkbox">
+    </label>
+    <label class="setting-row">
+      <span>默认播放速度</span>
+      <select id="set-rate">
+        <option value="0.5">0.5x</option>
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1.0x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="setting-group">
+    <h2 class="section-title">朗读（TTS）</h2>
+    <label class="setting-row">
+      <span>语音引擎</span>
+      <select id="set-engine">
+        <option value="offline" selected>离线（Piper · 稳定）</option>
+        <option value="online">在线（edge-tts · 音色好但不稳定）</option>
+      </select>
+    </label>
+    <label class="setting-row">
+      <span>音色</span>
+      <select id="set-voice">
+        <option value="en-US-AriaNeural">美音 · 女声 Aria</option>
+        <option value="en-US-GuyNeural">美音 · 男声 Guy</option>
+        <option value="en-GB-SoniaNeural">英音 · 女声 Sonia</option>
+        <option value="en-GB-RyanNeural">英音 · 男声 Ryan</option>
+      </select>
+    </label>
+    <p class="hint" id="tts-hint"></p>
+  </section>
+
+  <section class="setting-group">
+    <h2 class="section-title">环境</h2>
+    <div id="env-info" class="env-info"></div>
+  </section>
+
+  <button id="btn-reload" class="ghost-btn">刷新数据</button>
+</main>
+
+<!-- ───────────────────────── 底部导航 ───────────────────────── -->
+<nav class="tabbar" id="tabbar">
+  <!-- 图标用内联 SVG 而不是 emoji：emoji 是彩色的、各平台渲染不一致，
+       放在深色界面里显得廉价；单色线条图标才会跟着激活色变化 -->
+  <button class="tab active" data-view="library">
+    <span class="tab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v13"/>
+        <path d="M6 17h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H6a2 2 0 0 1 0-4z"/>
+        <path d="M8 7h6M8 11h4"/>
+      </svg>
+    </span><span>素材</span>
+  </button>
+  <button class="tab" data-view="study">
+    <span class="tab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 14v-2a8 8 0 0 1 16 0v2"/>
+        <rect x="2.5" y="13.5" width="4.5" height="7" rx="2.2"/>
+        <rect x="17" y="13.5" width="4.5" height="7" rx="2.2"/>
+      </svg>
+    </span><span>学习</span>
+  </button>
+  <button class="tab" data-view="progress">
+    <span class="tab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+      </svg>
+    </span><span>进度</span>
+  </button>
+  <button class="tab" data-view="settings">
+    <span class="tab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+    </span><span>设置</span>
+  </button>
+</nav>
+
+<!-- ───────────────────────── 导入弹层 ───────────────────────── -->
+<div id="import-sheet" class="sheet hidden">
+  <div class="sheet-backdrop" data-close-import></div>
+  <div class="sheet-body">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">导入素材</h2>
+
+    <div class="seg" id="import-seg">
+      <button class="seg-item active" data-mode="url">视频链接</button>
+      <button class="seg-item" data-mode="local">本地文件</button>
+    </div>
+
+    <div id="pane-url" class="pane">
+      <input id="input-url" class="text-input" type="url" inputmode="url"
+             placeholder="粘贴 B 站视频链接…" autocomplete="off">
+      <p class="hint">支持 B 站、以及 yt-dlp 能处理的多数网站。仅下载音频，速度快。</p>
+    </div>
+
+    <div id="pane-local" class="pane hidden">
+      <div class="path-row">
+        <input id="input-path" class="text-input" type="text" placeholder="选择或粘贴文件路径">
+        <button id="btn-browse" class="ghost-btn small">浏览</button>
+      </div>
+      <div id="browser" class="browser hidden"></div>
+    </div>
+
+    <div id="import-progress" class="import-progress hidden">
+      <div class="bar"><div id="progress-fill" class="bar-fill"></div></div>
+      <div id="progress-msg" class="progress-msg">准备中…</div>
+    </div>
+
+    <button id="btn-import-go" class="primary-btn">开始处理</button>
+  </div>
+</div>
+
+<!-- 播放列表用不到的隐藏音频元素 -->
+<audio id="tts-audio" preload="none"></audio>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

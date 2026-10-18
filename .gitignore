@@ -1,0 +1,58 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# ---- 运行时产物（绝不能提交）----
+# 用户数据：账号、学习进度、导入的媒体、切好的句子音频
+data/
+# 用户自己导入的素材
+我的素材/
+# 内网穿透 token、cookies 等凭据
+*token*.txt
+cookies.txt
+*.jks
+*.keystore
+
+# ---- 二进制与依赖（体积大，按文档自行下载）----
+tools/pydeps/
+tools/models/
+tools/python/
+tools/bin/*.exe
+tools/app/
+tools/cache/
+tools/tmp/
+tools/uvcache/
+*.nupkg
+*.zip
+*.exe
+*.apk
+*.ico
+
+# ---- 构建产物 ----
+构建产物/
+dist/
+build/
+build_pyi/
+*.spec
+
+# ---- 日志 ----
+*.log
+logs/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# ---- 截图与临时文件 ----
+data/shots/
+*screenshot*
+_*.ps1
+_*.js

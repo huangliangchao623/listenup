@@ -1,0 +1,39 @@
+# 听力训练 · Python 依赖（全部为预编译 wheel，无需本地编译）
+#
+# 安装方式见 README。注意：这些包用 uv 安装到 tools/pydeps，而不是全局环境。
+#
+# ⚠️ 关键版本约束（改动前请先读）
+#
+# av 必须 < 14：
+#   faster-whisper 1.2.1 调用 av.open(..., metadata_errors=...)，而 PyAV 14+
+#   移除了这个参数，一旦升级会直接抛
+#   TypeError: open() got an unexpected keyword argument 'metadata_errors'
+#   表现为"能下载、能提取音轨，但识别结果永远是空的"。已实测踩过这个坑。
+av==13.1.0
+
+# 语音识别（本地、离线、MIT）
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+onnxruntime==1.31.0
+tokenizers==0.23.3
+huggingface-hub==2.2.0
+numpy==2.5.4
+
+# 字幕解析
+pysubs2==1.9.0
+
+# 链接下载
+yt-dlp==2026.8.19
+
+# Web 服务
+fastapi==0.143.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+
+# 离线朗读（TTS）。edge-tts 保留为可选增强，实测其免费接口会返回 403。
+piper-tts==1.8.0
+edge-tts==7.2.8
+
+# 说明：stable-ts 未安装。它只有源码包，构建过程在本机沙箱中被拒绝执行
+# （chmod 临时目录失败）。本项目自行实现了切句算法，见 app/listenup/sentences.py，
+# 已有 27 个单元/集成测试覆盖。

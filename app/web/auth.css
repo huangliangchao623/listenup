@@ -1,0 +1,256 @@
+/* ============================================================
+   登录 / 注册 / 背景 / 个人中心
+   与主样式配合使用：主色、圆角、字体都在 style.css 里定义
+   ============================================================ */
+
+/* ---------- 背景图层 ---------- */
+#bg-layer {
+  position: fixed; inset: 0; z-index: -2;
+  /* 这里只设 background-color，不用 background 简写。
+     原因：渐变定义在 .bg-aurora 这类类上，背景层和色块预览（.bg-swatch）
+     共用同一套类。如果用 background 简写，ID 选择器优先级更高，
+     会把类上的渐变整个覆盖掉——之前色块变成透明就是这么来的。 */
+  background-color: #08090d;
+  transition: opacity .5s ease;
+  pointer-events: none;
+}
+#bg-layer.image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+#bg-layer::after {
+  content: '';
+  position: absolute; inset: 0;
+  /* 两层叠加：
+     ① 顶部竖向压暗，保证顶栏标题在任何背景下都清晰
+     ② 四周径向暗角，把视线收拢到中间内容 */
+  background:
+    linear-gradient(180deg, #08090dd9 0%, transparent 26%),
+    radial-gradient(ellipse 115% 90% at 50% 40%,
+                    transparent 20%, #08090d99 100%);
+}
+
+/* 内置渐变背景
+   注意：必须写成 #bg-layer.bg-xxx。
+   只写 .bg-xxx 会被上面的 ID 选择器的 background 覆盖掉——
+   这是个实测踩过的坑，ID 选择器优先级高于类选择器。 */
+.bg-aurora {
+  background:
+    radial-gradient(ellipse 105% 75% at 10% -12%, #0a84ff7a 0%, transparent 58%),
+    radial-gradient(ellipse 90% 65% at 96% 2%, #30d15859 0%, transparent 54%),
+    radial-gradient(ellipse 115% 75% at 50% 112%, #5e5ce659 0%, transparent 58%),
+    #08090d;
+}
+.bg-sunset {
+  background:
+    radial-gradient(ellipse 95% 65% at 8% -4%, #ff9f0a75 0%, transparent 60%),
+    radial-gradient(ellipse 85% 65% at 94% 20%, #ff375f59 0%, transparent 56%),
+    #0d0a12;
+}
+.bg-forest {
+  background:
+    radial-gradient(ellipse 90% 62% at 16% -6%, #30d15870 0%, transparent 60%),
+    radial-gradient(ellipse 85% 58% at 86% 32%, #0a84ff4d 0%, transparent 56%),
+    #070f0b;
+}
+.bg-mono {
+  background: linear-gradient(160deg, #1a1d26 0%, #0a0c10 55%, #14161d 100%);
+}
+.bg-ocean {
+  background:
+    radial-gradient(ellipse 95% 68% at 24% -6%, #32ade670 0%, transparent 60%),
+    radial-gradient(ellipse 85% 62% at 82% 58%, #0a84ff4d 0%, transparent 56%),
+    #060a12;
+}
+
+/* ---------- 登录遮罩层 ---------- */
+#auth-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  z-index: 100;
+  /* grid 居中比 flex 更稳：不依赖子元素尺寸，也不会被内容撑偏 */
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #06080ce6;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  animation: authFadeIn .3s ease;
+}
+@keyframes authFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  box-sizing: border-box;
+  background: #141821f5;
+  border: 1px solid #2a3140;
+  border-radius: 22px;
+  padding: 30px 24px 24px;
+  box-shadow: 0 24px 70px #00000099;
+  animation: authRise .32s cubic-bezier(.32, .72, 0, 1);
+}
+@keyframes authRise {
+  from { transform: translateY(18px) scale(.97); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.auth-logo {
+  width: 62px; height: 62px; margin: 0 auto 16px;
+  border-radius: 18px;
+  background: linear-gradient(140deg, #0a84ff, #5e5ce6);
+  display: grid; place-items: center;
+  font-size: 30px;
+  box-shadow: 0 10px 28px #0a84ff4d;
+}
+.auth-title {
+  font-size: 21px; font-weight: 700; text-align: center;
+  color: #e8ecf3; margin: 0 0 6px;
+  letter-spacing: -.3px;
+}
+.auth-sub {
+  font-size: 12.5px; color: #8b95a7; text-align: center;
+  margin: 0 0 22px; line-height: 1.6;
+}
+
+.auth-field { margin-bottom: 12px; }
+.auth-field label {
+  display: block; font-size: 11.5px; color: #8b95a7;
+  margin-bottom: 6px; padding-left: 3px;
+}
+.auth-input {
+  width: 100%; padding: 13px 14px;
+  background: #1b2029; border: 1px solid #2a3140;
+  border-radius: 12px; color: #e8ecf3;
+  font-size: 15px; outline: none;
+  transition: border-color .15s, background .15s;
+}
+.auth-input:focus { border-color: #0a84ff; background: #1e242e; }
+.auth-input::placeholder { color: #5f6878; }
+
+.auth-btn {
+  width: 100%; padding: 14px; margin-top: 8px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #0a84ff, #0670d8);
+  color: #fff; font-size: 15.5px; font-weight: 600;
+  cursor: pointer; transition: filter .15s, transform .1s;
+}
+.auth-btn:hover { filter: brightness(1.08); }
+.auth-btn:active { transform: scale(.985); }
+.auth-btn:disabled { opacity: .55; cursor: default; filter: none; }
+
+.auth-switch {
+  text-align: center; font-size: 12.5px; color: #8b95a7;
+  margin-top: 18px;
+}
+.auth-switch a {
+  color: #0a84ff; text-decoration: none; cursor: pointer;
+  font-weight: 600;
+}
+.auth-switch a:hover { text-decoration: underline; }
+
+.auth-error {
+  background: #ff453a1f; border: 1px solid #ff453a44;
+  color: #ff8f88; font-size: 12.5px;
+  padding: 10px 12px; border-radius: 10px;
+  margin-bottom: 14px; line-height: 1.5;
+  display: none;
+}
+.auth-error.show { display: block; }
+
+/* ---------- 顶栏头像 ---------- */
+.avatar-btn {
+  width: 36px; height: 36px; flex: 0 0 36px;
+  border-radius: 50%; border: none; padding: 0;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; overflow: hidden;
+  display: grid; place-items: center;
+  background-size: cover; background-position: center;
+}
+
+/* ---------- 背景选择器 ---------- */
+.bg-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 14px 15px 16px;
+}
+.bg-swatch {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .12s, border-color .15s;
+}
+.bg-swatch:hover { transform: scale(1.05); }
+.bg-swatch.active { border-color: #0a84ff; }
+.bg-swatch.active::after {
+  content: '✓';
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: #0a84ff66; color: #fff;
+  font-size: 17px; font-weight: 700;
+}
+.bg-swatch.custom {
+  border: 2px dashed #3a4250;
+  display: grid; place-items: center;
+  color: #8b95a7; font-size: 19px;
+  background: #1b2029;
+}
+.bg-swatch.custom:hover { color: #0a84ff; border-color: #0a84ff; }
+
+.bg-label {
+  font-size: 11px; color: #5f6878;
+  margin-top: 4px; text-align: center;
+}
+
+/* ---------- 个人中心 ---------- */
+.profile-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 16px;
+}
+.profile-avatar {
+  width: 58px; height: 58px; flex: 0 0 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  display: grid; place-items: center;
+  font-size: 24px; font-weight: 700; color: #fff;
+  cursor: pointer; background-size: cover; background-position: center;
+  position: relative;
+}
+.profile-avatar:hover::after {
+  content: '更换';
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: #000000b0; border-radius: 50%;
+  font-size: 11px; font-weight: 500;
+}
+.profile-name { font-size: 17px; font-weight: 700; color: #e8ecf3; }
+.profile-meta { font-size: 11.5px; color: #8b95a7; margin-top: 3px; }
+
+.logout-btn {
+  width: 100%; padding: 12px; margin: 8px 16px 16px;
+  width: calc(100% - 32px);
+  border: 1px solid #ff453a33; border-radius: 12px;
+  background: #ff453a12; color: #ff8f88;
+  font-size: 14px; cursor: pointer;
+}
+.logout-btn:hover { background: #ff453a1f; }
+
+/* ---------- 深色/浅色适配 ---------- */
+@media (prefers-color-scheme: light) {
+  body[data-theme="light"] .auth-card {
+    background: #ffffffee; border-color: #e2e5ea;
+  }
+  body[data-theme="light"] .auth-title { color: #16181d; }
+  body[data-theme="light"] .auth-input {
+    background: #f0f2f5; border-color: #e2e5ea; color: #16181d;
+  }
+}
