@@ -108,7 +108,7 @@ def listening_pids(port: int = PORT) -> list[int]:
     """端口上处于 LISTENING 的进程号；没起来时返回空列表。"""
     try:
         out = subprocess.run(["netstat", "-ano"], capture_output=True,
-                             text=True, errors="replace", timeout=15).stdout
+                             text=True, encoding="utf-8", errors="replace", timeout=15).stdout
     except Exception:  # noqa: BLE001
         return []
     pids: list[int] = []
@@ -243,7 +243,7 @@ def tunnel_pid() -> int | None:
     try:
         out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq natapp.exe",
                               "/FO", "CSV", "/NH"],
-                             capture_output=True, text=True,
+                             capture_output=True, text=True, encoding="utf-8",
                              errors="replace", timeout=15).stdout
     except Exception:  # noqa: BLE001
         return None

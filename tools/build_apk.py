@@ -46,7 +46,7 @@ def run(args: list[str], cwd: Path | None = None, check: bool = True) -> subproc
     env.setdefault("TEMP", str(ROOT / "tools" / "tmp"))
     env.setdefault("TMP", env["TEMP"])
     r = subprocess.run(args, cwd=str(cwd) if cwd else None,
-                       capture_output=True, text=True,
+                       capture_output=True, text=True, encoding="utf-8",
                        encoding="utf-8", errors="replace", env=env)
     if check and r.returncode != 0:
         print(f"  命令失败：{' '.join(args[:3])}…")

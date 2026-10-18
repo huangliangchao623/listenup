@@ -74,7 +74,7 @@ def natapp_running() -> bool:
     try:
         out = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq natapp.exe", "/FO", "CSV", "/NH"],
-            capture_output=True, text=True, errors="replace", timeout=15).stdout
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15).stdout
         return "natapp.exe" in out.lower()
     except Exception:  # noqa: BLE001
         return False
@@ -171,7 +171,7 @@ def main() -> int:
             old = int(pid_file.read_text().strip())
             out = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {old}", "/FO", "CSV", "/NH"],
-                capture_output=True, text=True, errors="replace", timeout=10).stdout
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10).stdout
             if str(old) in out and "python" in out.lower():
                 log(f"已有守护进程在跑（PID {old}），本次退出")
                 return 0

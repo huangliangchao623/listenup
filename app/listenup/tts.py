@@ -103,7 +103,7 @@ def piper_synthesize(text: str, voice: str | None = None) -> Path:
         [str(C.FFMPEG), "-hide_banner", "-loglevel", "error", "-y",
          "-i", str(raw), "-ac", "1", "-ar", "24000",
          "-c:a", "libmp3lame", "-q:a", "5", str(final)],
-        capture_output=True, text=True, errors="replace", timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
     )
     raw.unlink(missing_ok=True)
     if r.returncode != 0 or not final.exists():

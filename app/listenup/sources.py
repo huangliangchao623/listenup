@@ -160,7 +160,7 @@ def ytdlp_probe(url: str) -> dict:
     r = subprocess.run(
         _ytdlp_cmd("--dump-single-json", "--no-warnings", "--no-playlist",
                    *_network_args(), *_cookies_args(), url),
-        capture_output=True, text=True, errors="replace", timeout=180,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
         env=_subprocess_env(),
     )
     if r.returncode != 0:
@@ -233,7 +233,7 @@ def download_media(url: str, out_dir: Path, audio_only: bool = True,
     # forever - a classic pipe deadlock that hangs the whole import.
     proc = subprocess.Popen(
         _ytdlp_cmd(*args), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, errors="replace", env=_subprocess_env(),
+        text=True, encoding="utf-8", errors="replace", env=_subprocess_env(),
     )
     assert proc.stdout is not None
     tail: list[str] = []
@@ -275,7 +275,7 @@ def download_subtitles(url: str, out_dir: Path, langs: str = "en.*,en") -> list[
                 "-o", str(out_dir / "%(id)s.%(ext)s"),
                 *_network_args(), *_cookies_args(), *_ffmpeg_args(), url,
             ),
-            capture_output=True, text=True, errors="replace", timeout=240,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=240,
             env=_subprocess_env(),
         )
         after = set(out_dir.glob("*.vtt")) | set(out_dir.glob("*.srt"))

@@ -50,7 +50,7 @@ PROCESS_NAMES = {
 def running(name: str) -> int:
     r = subprocess.run(
         ["tasklist", "/FI", f"IMAGENAME eq {PROCESS_NAMES[name]}.exe", "/NH"],
-        capture_output=True, text=True, errors="replace",
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return (r.stdout or "").lower().count(f"{PROCESS_NAMES[name]}.exe")
 

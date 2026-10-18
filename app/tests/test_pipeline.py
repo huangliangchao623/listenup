@@ -75,7 +75,7 @@ def build_audio(path: Path) -> list[Word]:
     cmd += ["-filter_complex",
             "".join(filters) + f"concat=n={len(parts)}:v=0:a=1[out]",
             "-map", "[out]", "-ac", "1", "-ar", "16000", str(path)]
-    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise RuntimeError(f"ffmpeg failed: {r.stderr[-500:]}")
     return words

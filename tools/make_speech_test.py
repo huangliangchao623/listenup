@@ -50,7 +50,7 @@ def synth(text: str, out_wav: Path) -> bool:
 
     r = subprocess.run(
         [sys.executable, "-m", "piper", "-m", str(model), "-f", str(out_wav)],
-        input=text, capture_output=True, text=True, errors="replace",
+        input=text, capture_output=True, text=True, encoding="utf-8", errors="replace",
         env={**os.environ, "PYTHONPATH": str(C.PYDEPS)},
     )
     if r.returncode != 0:
@@ -106,7 +106,7 @@ def main() -> int:
         env={**os.environ,
              "PYTHONPATH": str(C.PYDEPS) + os.pathsep + str(APP),
              "PYTHONIOENCODING": "utf-8"},
-        capture_output=True, text=True, errors="replace",
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     print(r.stdout[-4000:])
     if r.returncode != 0:

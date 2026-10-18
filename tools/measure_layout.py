@@ -91,7 +91,7 @@ def main() -> int:
              "Get-Process msedge -ErrorAction SilentlyContinue | "
              "Where-Object { $_.MainWindowTitle -like '*听力*' } | "
              "ForEach-Object { $_.Id }"],
-            capture_output=True, text=True).stdout.split():
+            capture_output=True, text=True, encoding="utf-8").stdout.split():
         subprocess.run(["taskkill", "/PID", p, "/F"], capture_output=True)
 
     proc = launch()

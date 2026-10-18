@@ -69,7 +69,7 @@ def build_video(path: Path) -> list[Word]:
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-ac", "1", "-ar", "16000", "-shortest",
             str(path)]
-    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise RuntimeError(f"ffmpeg failed: {r.stderr[-600:]}")
     return words

@@ -158,6 +158,27 @@ python app/run.py --port 8765 --log
 几乎一样**（实测句尾 0.72s，句中 0.70s），单靠停顿长短无法区分。要再提升需要
 引入语义模型，这是后续方向。
 
+### 另一个隐蔽的坑：中文路径 + GBK 解码
+
+这个问题只有在**程序所在路径含中文**时才会出现，表现是导入时莫名其妙失败：
+
+```
+JSONDecodeError: Invalid \escape: line 121 column 38
+```
+
+原因：Windows 上 `subprocess.run(..., text=True)` **默认用系统区域编码解码**
+（中文系统是 GBK），而 ffprobe 输出的是 UTF-8。GBK 是双字节编码，
+**尾字节可能是 0x5C（反斜杠）**，于是解码后的字符串里多出一个孤立的 `\`，
+JSON 转义被破坏。
+
+而且 ffprobe **不转义非 ASCII 字符**（yt-dlp 会转成 `\uXXXX`，所以 yt-dlp 那条路没事），
+所以只有调用 ffprobe 的地方会炸。
+
+修法是所有 `subprocess` 调用显式指定 `encoding="utf-8"`，见 `app/listenup/ffmpeg_io.py`。
+
+> 教训：**永远不要依赖 `text=True` 的默认编码**。Windows 上它跟随系统区域设置，
+> 在中文用户机器上就是 GBK，和非 ASCII 路径/元数据配合必然出事。
+
 辅助工具：
 
 ```bash

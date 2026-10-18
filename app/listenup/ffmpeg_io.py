@@ -23,7 +23,7 @@ class FFmpegError(RuntimeError):
 
 def _run(args: list[str], timeout: int = 900) -> subprocess.CompletedProcess:
     r = subprocess.run(
-        args, capture_output=True, text=True, errors="replace", timeout=timeout
+        args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
     )
     if r.returncode != 0:
         tail = (r.stderr or "")[-800:]

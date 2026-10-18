@@ -62,7 +62,7 @@ def browser_running(browser: str) -> bool:
     if not exe:
         return False
     r = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {exe}", "/NH"],
-                       capture_output=True, text=True, errors="replace")
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     return exe.lower() in (r.stdout or "").lower()
 
 
@@ -115,7 +115,7 @@ def main() -> int:
     env["PYTHONPATH"] = str(PYDEPS) + os.pathsep + env.get("PYTHONPATH", "")
     env.setdefault("TEMP", str(HERE / "tmp"))
     env.setdefault("TMP", str(HERE / "tmp"))
-    r = subprocess.run(cmd, capture_output=True, text=True,
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", env=env, timeout=180)
 
     if not out.exists() or out.stat().st_size == 0:
