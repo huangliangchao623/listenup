@@ -27,6 +27,13 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
+# 先挂上「不弹控制台窗口」的补丁，再导入别的东西
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from listenup import noflash as _noflash  # noqa: E402
+
+_noflash.install()
+
 APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
 TOOLS = ROOT / "tools"
@@ -1664,7 +1671,28 @@ class Console(tk.Tk):
             webbrowser.open(target)
 
 
+def _single_instance() -> bool:
+    """保证同时只开一个控制台窗口。
+
+    之前测试时不小心启动了多个实例，桌面上堆了好几个一模一样的窗口。
+    用 Windows 命名互斥体做判断：如果已经有一个在跑，就直接退出。
+    """
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        kernel32.CreateMutexW(None, False, "Local\\ListenUpConsole")
+        ERROR_ALREADY_EXISTS = 183
+        return kernel32.GetLastError() != ERROR_ALREADY_EXISTS
+    except Exception:  # noqa: BLE001
+        return True      # 判断失败时不阻止启动
+
+
 def main() -> int:
+    if not _single_instance():
+        return 0
     app = Console()
     app.mainloop()
     return 0

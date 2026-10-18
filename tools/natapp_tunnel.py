@@ -41,6 +41,15 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# 让子进程（tasklist / natapp / ffmpeg）不弹控制台窗口
+import sys as _sys
+
+_sys.path.insert(0, str(ROOT / "app"))
+from listenup import noflash as _noflash  # noqa: E402
+
+_noflash.install()
+
 BIN = ROOT / "tools" / "bin"
 EXE = BIN / "natapp.exe"
 TOKEN_FILE = ROOT / "data" / "natapp_token.txt"

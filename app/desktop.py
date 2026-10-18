@@ -39,6 +39,13 @@ import time
 import urllib.request
 from pathlib import Path
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from listenup import noflash as _noflash  # noqa: E402
+
+_noflash.install()
+
+
 # 打包成 exe 之后，__file__ 指向 PyInstaller 的运行时目录，用它算程序目录会全错。
 # 运行时以 exe 所在位置为起点，向上找"真正的程序根目录"（同时有 app\run.py
 # 和 tools\pydeps 的那一层）。这样 exe 放在根目录还是子目录都能工作。

@@ -23,6 +23,12 @@ TOOLS = WS / "tools"
 sys.path.insert(0, str(TOOLS / "pydeps"))
 sys.path.insert(0, str(APP_DIR))
 
+# 让所有子进程（ffmpeg / yt-dlp / netstat…）都不弹控制台窗口
+from listenup import noflash  # noqa: E402
+
+noflash.install()
+
+
 os.environ.setdefault("TEMP", str(TOOLS / "tmp"))
 os.environ.setdefault("TMP", str(TOOLS / "tmp"))
 os.environ.setdefault("OMP_NUM_THREADS", "6")

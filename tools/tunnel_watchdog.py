@@ -30,6 +30,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
+
+# 让子进程（tasklist / natapp / ffmpeg）不弹控制台窗口
+import sys as _sys
+
+_sys.path.insert(0, str(ROOT / "app"))
+from listenup import noflash as _noflash  # noqa: E402
+
+_noflash.install()
+
 DATA = ROOT / "data"
 LOGS = DATA / "logs"
 TOKEN_FILE = DATA / "natapp_token.txt"
