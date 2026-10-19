@@ -1172,13 +1172,14 @@ function renderProfile() {
 
   // 顶栏头像
   const av = $('btn-avatar');
-  av.textContent = initial;
-  if (u.avatar) av.style.backgroundImage = `url("${u.avatar}")`; else av.style.backgroundImage = '';
+  // 有头像图片时不要留首字母——否则会压在图片上透出来
+  av.textContent = u.avatar ? '' : initial;
+  av.style.backgroundImage = u.avatar ? `url("${u.avatar}")` : '';
 
   // 个人中心
-  $('profile-avatar').textContent = initial;
-  if (u.avatar) $('profile-avatar').style.backgroundImage = `url("${u.avatar}")`;
-  else $('profile-avatar').style.backgroundImage = '';
+  $('profile-avatar').textContent = u.avatar ? '' : initial;
+  $('profile-avatar').style.backgroundImage = u.avatar
+    ? `url("${u.avatar}")` : '';
   $('profile-name').textContent = name;
   $('profile-meta').textContent =
     `${u.username}${u.role === 'admin' ? ' · 管理员' : ''}`;
@@ -1245,7 +1246,7 @@ $('auth-switch-link').addEventListener('click', () => {
  * 手机上拍一张照片就是 3-8 MB，直接存 base64 会把数据库撑大、
  * 每次登录还要把它整个传下来。所以这里统一缩放 + JPEG 压缩。
  */
-function compressImage(file, size = 256, quality = 0.85) {
+function compressImage(file, size = 512, quality = 0.9) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -1329,19 +1330,54 @@ $$('#bg-grid .bg-swatch[data-bg]').forEach(el => {
 });
 
 $('bg-upload').addEventListener('click', () => $('bg-file').click());
-$('bg-file').addEventListener('change', (e) => {
+$('bg-file').addEventListener('change', async (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    toast('图片太大了（上限 2 MB），换一张小的');
-    e.target.value = '';
+  e.target.value = '';
+  if (!file.type.startsWith('image/')) {
+    toast('请选一张图片');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => saveBackground(String(reader.result));
-  reader.readAsDataURL(file);
-  e.target.value = '';
+  // 不限大小：任何图片都接受，但压到 2560px 再存。
+  // 不压的话一张 12MP 照片会变成 8 MB base64 塞进数据库，
+  // 每次登录都要把它整个传下来。
+  try {
+    toast('正在处理图片…');
+    const dataUrl = await compressBackground(file);
+    await saveBackground(dataUrl);
+  } catch (err) {
+    toast('图片读取失败：' + err.message);
+  }
 });
+
+/**
+ * 背景图压缩：保持原比例，长边不超过 2560。
+ * 和头像不同，背景不能裁成正方形，否则会被拉伸变形。
+ */
+function compressBackground(file, maxSide = 2560, quality = 0.9) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width;
+      let h = img.height;
+      const scale = Math.min(1, maxSide / Math.max(w, h));
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('这个文件不是有效的图片'));
+    };
+    img.src = url;
+  });
+}
 
 // ---------------------------------------------------------------- 启动
 (async function init() {

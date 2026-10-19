@@ -1,0 +1,444 @@
+/* ============================================================
+   白色透明主题
+   ------------------------------------------------------------
+   目标：浅色毛玻璃，用户的背景图能透出来，文字清晰可读。
+
+   实现方式上有个取舍：深色主题靠"压暗"保证对比度，
+   浅色主题不能压暗，只能靠"白色半透明 + 模糊"把背景柔化成底纹。
+   所以 #bg-layer::after 从黑色遮罩换成了白色遮罩。
+
+   层叠顺序（index.html 里）：
+     style.css → auth.css → visual.css → youth.css → light.css
+   本文件最后加载，同优先级下覆盖前面所有定义。
+   ============================================================ */
+
+:root {
+  /* ---- 白玻璃 ---- */
+  --glass-1: rgba(255, 255, 255, 0.66);
+  --glass-2: rgba(255, 255, 255, 0.76);
+  --glass-3: rgba(255, 255, 255, 0.86);
+  --glass-strong: rgba(255, 255, 255, 0.93);
+  --glass-line: rgba(255, 255, 255, 0.60);
+  --glass-line-2: rgba(255, 255, 255, 0.85);
+
+  /* ---- 深色文字 ---- */
+  --t1: #12151c;
+  --t2: #2b3140;
+  --t3: #59617a;
+  --t4: #8b93a6;
+
+  --line: rgba(0, 0, 0, 0.07);
+  --line-2: rgba(0, 0, 0, 0.11);
+
+  /* ---- 底色 ---- */
+  --bg: #eef1f6;
+  --bg-2: #ffffff;
+  --bg-3: #f4f6fa;
+  --bg-4: #e9edf4;
+
+  --card: #ffffff;
+  --accent: #3b82f6;
+  --accent-2: #7c5cff;
+  --accent-soft: rgba(59, 130, 246, 0.12);
+
+  --sh-1: 0 1px 3px rgba(16, 24, 40, 0.08);
+  --sh-2: 0 6px 20px rgba(16, 24, 40, 0.12);
+  --sh-3: 0 16px 48px rgba(16, 24, 40, 0.18);
+}
+
+/* ---------- 底层背景 ---------- */
+html { background: var(--bg); }
+
+/* 背景遮罩：改成白色柔化，让照片变成浅色底纹 */
+#bg-layer::after {
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(255, 255, 255, 0.55) 26%,
+      rgba(255, 255, 255, 0.30) 60%,
+      rgba(255, 255, 255, 0.55) 100%) !important;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.62) 70%,
+    rgba(255, 255, 255, 0) 100%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.topbar h1 {
+  background: linear-gradient(115deg, #1b1f2a 5%, #3b82f6 55%, #7c5cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- 底部导航 ---------- */
+.tabbar {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 -6px 24px rgba(16, 24, 40, 0.10);
+}
+
+.tab { color: var(--t4); }
+.tab.active { color: var(--accent); }
+
+/* ---------- 卡片 / 面板 ---------- */
+.card,
+.stat,
+.setting-group,
+.player-wrap,
+.skeleton {
+  background: var(--glass-1);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 22px;
+  box-shadow:
+    0 10px 30px rgba(16, 24, 40, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.card:hover {
+  background: var(--glass-2);
+  border-color: #ffffff;
+  box-shadow:
+    0 14px 36px rgba(16, 24, 40, 0.14),
+    0 0 0 1px rgba(59, 130, 246, 0.18);
+}
+
+/* ---------- 搜索框 / 筛选 ---------- */
+.searchbar {
+  background: rgba(255, 255, 255, 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.07);
+  color: var(--t1);
+}
+
+.searchbar input { color: var(--t1); }
+.searchbar input::placeholder { color: var(--t4); }
+
+.chip-btn {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  color: var(--t2);
+}
+
+.chip-btn.active {
+  background: linear-gradient(135deg, #3b82f6, #7c5cff);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.38);
+}
+
+/* ---------- 主视觉卡：保留彩色渐变 ---------- */
+.hero {
+  background: linear-gradient(135deg,
+    #4f8cff 0%, #6b6bff 42%, #a855f7 72%, #ff5c8a 100%);
+  color: #fff;
+  box-shadow: 0 18px 42px rgba(79, 140, 255, 0.34);
+}
+
+.hero, .hero * { color: #fff; }
+.hero-go { color: #4361ee !important; }
+
+/* ---------- 统计胶囊 ---------- */
+.stat-pill {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.stat-pill .v { color: var(--t1); }
+.stat-pill .k { color: var(--t4); }
+
+/* ---------- 按钮 ---------- */
+.primary-btn {
+  background: linear-gradient(135deg, #3b82f6, #7c5cff);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(59, 130, 246, 0.36);
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  color: var(--t2);
+}
+
+.ghost-btn:hover { background: #fff; }
+
+/* ---------- 句子列表 ---------- */
+.sent {
+  border-radius: 16px;
+  border-left: 3px solid transparent;
+}
+
+.sent:hover { background: rgba(255, 255, 255, 0.60); }
+
+.sent.current {
+  background: linear-gradient(90deg,
+    rgba(59, 130, 246, 0.16), rgba(124, 92, 255, 0.06));
+  border-left-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.22);
+}
+
+.sent-text { color: var(--t1); }
+.sent-no { color: var(--t4); }
+.sent-sub { color: var(--t4); }
+.sent.current .sent-no { color: var(--accent); }
+
+.sent-trans {
+  color: var(--t3);
+  border-left-color: rgba(124, 92, 255, 0.35);
+}
+
+.sent.current .sent-trans { color: var(--t2); }
+
+.sent.hide-text .sent-text {
+  filter: blur(7px);
+  opacity: 0.55;
+}
+
+.sent.hide-text:not(.revealed) .sent-trans {
+  filter: blur(7px);
+  opacity: 0.45;
+}
+
+/* 仅中文 */
+#sentence-list.cn-only .sent-trans {
+  color: var(--t1) !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* ---------- 播放器 ---------- */
+.t-play {
+  background: linear-gradient(135deg, #3b82f6, #7c5cff);
+  box-shadow: 0 8px 22px rgba(59, 130, 246, 0.42);
+}
+
+#seek { background: rgba(0, 0, 0, 0.12); }
+
+#seek::-webkit-slider-thumb {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.45);
+}
+
+/* ---------- 弹层 ---------- */
+.sheet-body {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -12px 40px rgba(16, 24, 40, 0.18);
+}
+
+.sheet-body, .sheet-body * { color: var(--t1); }
+
+.seg { background: rgba(0, 0, 0, 0.06); }
+
+.seg-item { color: var(--t3); }
+
+.seg-item.active {
+  background: linear-gradient(135deg, #3b82f6, #7c5cff);
+  color: #fff;
+}
+
+.text-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  color: var(--t1);
+}
+
+.text-input::placeholder { color: var(--t4); }
+
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+/* ---------- 设置 ---------- */
+.setting-row { color: var(--t1); }
+.setting-row:hover { background: rgba(255, 255, 255, 0.6); }
+.setting-row + .setting-row { border-top: 1px solid rgba(0, 0, 0, 0.06); }
+
+/* ---------- Toast ---------- */
+.toast {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--t1);
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.20);
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.16); border-radius: 3px; }
+
+/* ---------- 登录 / 注册页 ---------- */
+.auth-card,
+.auth-box {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 20px 50px rgba(16, 24, 40, 0.16) !important;
+}
+
+.auth-card *, .auth-box * { color: var(--t1); }
+
+.auth-card input, .auth-box input {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  color: var(--t1) !important;
+}
+
+/* 登录页的标题和大字 */
+.auth-title { color: var(--t1) !important; }
+.auth-sub { color: var(--t3) !important; }
+
+/* ---------- 头像占位：浅色主题下要能看清 ---------- */
+.avatar-btn,
+.profile-avatar {
+  background-color: rgba(59, 130, 246, 0.14);
+  color: var(--accent);
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+/* 有头像图时不要露出底色 */
+.avatar-btn[style*="background-image"],
+.profile-avatar[style*="background-image"] {
+  background-color: transparent;
+}
+
+
+/* ---------- 页面级底板：必须覆盖 youth.css 的深色 ----------
+   youth.css 给 #view-* 设了 rgba(9,11,16,0.9) 的深色面板，
+   在白色主题下会变成一大块黑底，卡片像飘在黑洞上。
+   这里换成白色薄纱：既压住照片保证可读，又不会挡死背景。 */
+#view-study.active,
+#view-library,
+#view-progress,
+#view-settings {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.30) 55%,
+    rgba(255, 255, 255, 0.40) 100%);
+  backdrop-filter: blur(9px) saturate(135%);
+  -webkit-backdrop-filter: blur(9px) saturate(135%);
+}
+
+/* 学习页顶部工具条 */
+.study-topbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), transparent);
+}
+
+/* ---------- 提高几处低对比度 ---------- */
+
+/* 统计胶囊的说明文字 */
+.stat-pill .k,
+.stat-pill .label,
+.stat .k {
+  color: var(--t3) !important;
+}
+
+/* 平台标签（B站 / 本地） */
+.chip.bili {
+  background: rgba(251, 114, 153, 0.18) !important;
+  color: #d6335f !important;
+  border: 1px solid rgba(214, 51, 95, 0.22) !important;
+  font-weight: 600;
+}
+.chip.local {
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: #2563eb !important;
+  border: 1px solid rgba(37, 99, 235, 0.20) !important;
+  font-weight: 600;
+}
+.chip {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* 卡片里的次要信息：时长、句数、进度 */
+.card .meta,
+.card .sub,
+.card .info {
+  color: var(--t3) !important;
+}
+
+/* 已学进度条底槽 */
+.card .bar,
+.card .progress,
+.progress-track {
+  background: rgba(0, 0, 0, 0.10) !important;
+}
+
+/* 空状态 / 提示文字 */
+.empty, .hint, .tip, .muted {
+  color: var(--t3) !important;
+}
+
+
+/* ---------- 学习页：句子行要有底板 ----------
+   白底 + 模糊文字 = 什么都看不见，用户不知道这里有内容。
+   给每行加一层淡白底，模糊的字就变成看得见形状但读不出的状态。 */
+.sent {
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.sent.current {
+  background: linear-gradient(90deg,
+    rgba(59, 130, 246, 0.18), rgba(124, 92, 255, 0.08));
+  border-color: rgba(59, 130, 246, 0.30);
+}
+
+/* ---------- 播放器区：从近黑改成浅色玻璃 ---------- */
+.player-wrap {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.player-placeholder { color: var(--t3) !important; }
+.player-placeholder .wave { filter: saturate(0.9); }
+
+/* 视频本身保持黑底（画面需要），但外框是白的 */
+#video { background: #0b0e14; }
+
+/* 进度条轨道 */
+.seek-wrap, .seek-track { background: rgba(0, 0, 0, 0.10) !important; }
+
+/* 播放控制的小胶囊（1.0x / 循环） */
+.t-chip {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--t2);
+}
+
+.t-btn { color: var(--t2); }
+
+/* 时间文字 */
+.time, .time-sep { color: var(--t3); }
+
+/* 已完成进度文字 */
+.study-progress, .study-footer { color: var(--t3) !important; }
+
+
+/* 播放器占位块：深色改成浅色渐变 */
+.player-placeholder,
+#player-placeholder {
+  background: linear-gradient(160deg,
+    rgba(255, 255, 255, 0.90) 0%,
+    rgba(238, 242, 250, 0.85) 55%,
+    rgba(226, 232, 244, 0.85) 100%) !important;
+  color: var(--t3) !important;
+}
+
+#player-placeholder-text { color: var(--t3) !important; }
+
+/* 视频没加载时的容器底色 */
+#player-wrap, .player-wrap { background: rgba(255, 255, 255, 0.60) !important; }
