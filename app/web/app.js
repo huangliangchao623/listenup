@@ -807,33 +807,9 @@ $('btn-import-go').addEventListener('click', async () => {
     return;
   }
 
-  const es = new EventSource(`/api/jobs/${jobId}/stream`);
-  es.onmessage = (ev) => {
-    let d;
-    try { d = JSON.parse(ev.data); } catch (_) { return; }
-    if (d.type === 'progress') {
-      setProgress(d.frac, d.msg);
-    } else if (d.type === 'done') {
-      es.close();
-      setProgress(1, `完成：${d.result.sentences} 句`);
-      $('btn-import-go').disabled = false;
-      toast(`已导入「${d.result.title}」`);
-      $('import-sheet').classList.add('hidden');
-      $('input-url').value = '';
-      loadLessons().then(() => openLesson(d.result.id));
-    } else if (d.type === 'error') {
-      es.close();
-      setProgress(0, '失败：' + d.message);
-      $('btn-import-go').disabled = false;
-      toast('导入失败：' + d.message, 4000);
-    }
-  };
-  es.onerror = () => {
-    es.close();
-    // 不要猜「可能还在跑」——直接问服务端。服务重启过的话任务已经没了。
-    setProgress(0, '连接中断，正在确认任务状态…');
-    recoverJob(jobId);
-  };
+  // 轮询取代 SSE：隧道会掐断长连接，短连接每次都能重新问
+  watchJob(jobId);
+  return;
 });
 
 /**
@@ -842,6 +818,58 @@ $('btn-import-go').addEventListener('click', async () => {
  * 任务表在服务端内存里，服务重启后任务就不存在了（接口返回 404）。
  * 光凭「连接中断」四个字，用户没法判断该等还是该重来。
  */
+/**
+ * 轮询任务状态，直到结束。
+ *
+ * 刻意不用 EventSource：SSE 是长连接，在手机走隧道时会被中途掐断，
+ * 表现为「导入到一半连接中断」。轮询每次都是短连接，断了还能再问。
+ */
+async function watchJob(jobId) {
+  const started = Date.now();
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1200));
+    let d = null;
+    try {
+      d = await api(`/api/jobs/${jobId}`);
+    } catch (e) {
+      setProgress(0, '任务已中断（服务可能重启过），请重新导入');
+      $('btn-import-go').disabled = false;
+      return;
+    }
+    if (!d) return;
+
+    if (d.status === 'running') {
+      const frac = typeof d.frac === 'number' ? d.frac : 0;
+      setProgress(frac, d.msg || '正在处理');
+      // 兜底：超过 30 分钟就当异常，避免无限轮询
+      if (Date.now() - started > 30 * 60 * 1000) {
+        setProgress(0, '任务超时，请检查控制台日志');
+        $('btn-import-go').disabled = false;
+        return;
+      }
+      continue;
+    }
+
+    if (d.status === 'done' && d.result) {
+      setProgress(1, `完成：${d.result.sentences} 句`);
+      $('btn-import-go').disabled = false;
+      toast(`已导入「${d.result.title}」`);
+      $('import-sheet').classList.add('hidden');
+      $('input-url').value = '';
+      await loadLessons();
+      openLesson(d.result.id);
+      return;
+    }
+
+    // error / cancelled / 其它
+    const msg = d.error || '未知错误';
+    setProgress(0, '失败：' + msg);
+    $('btn-import-go').disabled = false;
+    toast('导入失败：' + msg, 4000);
+    return;
+  }
+}
+
 async function recoverJob(jobId) {
   let d = null;
   try {
@@ -871,13 +899,12 @@ async function recoverJob(jobId) {
     return true;
   }
   if (d.status === 'running') {
-    // 真的还在跑：继续轮询，直到跑完
-    setProgress(0, '任务仍在运行，正在重新连接…');
-    setTimeout(async () => {
-      if (!(await recoverJob(jobId))) {
-        setTimeout(() => recoverJob(jobId), 3000);
-      }
-    }, 2500);
+    // 任务确实还在跑。用服务端最后上报的进度恢复进度条，
+    // 而不是清零重来——用户看到进度条倒退会很困惑。
+    const frac = typeof d.frac === 'number' ? d.frac : 0;
+    const msg = d.msg || '正在处理';
+    setProgress(frac, msg + '（已重连）');
+    setTimeout(() => recoverJob(jobId), 3000);
     return false;
   }
   return false;

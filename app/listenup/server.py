@@ -457,9 +457,24 @@ async def job_stream(job_id: str, request: Request) -> StreamingResponse:
         if job.status == "error":
             yield f"data: {json.dumps({'type': 'error', 'message': job.error})}\n\n"
             return
+        # 心跳：识别阶段可能几分钟没有任何进度事件，连接空闲会被
+        # 反向代理 / natapp 隧道 / 手机网络掐断（表现为导入到一半
+        # 突然显示「连接中断」）。每 10 秒发一行 SSE 注释保活。
+        #
+        # 用「带超时的阻塞 get」而不是 asyncio.wait_for：
+        # wait_for 超时会取消 future，正在排队的进度事件会被丢掉。
+        def _next_item(timeout: float):
+            try:
+                return job.queue.get(timeout=timeout)
+            except queue.Empty:
+                return "__tick__"
+
         loop = asyncio.get_running_loop()
         while True:
-            item = await loop.run_in_executor(None, job.queue.get)
+            item = await loop.run_in_executor(None, _next_item, 10.0)
+            if item == "__tick__":
+                yield ": keep-alive\n\n"
+                continue
             if item is None:
                 break
             yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
@@ -482,6 +497,8 @@ def job_status(job_id: str, user: dict = Depends(current_user)) -> dict:
         "id": job.id, "status": job.status, "error": job.error,
         "result": job.result, "label": job.label,
         "elapsed": round(time.time() - job.started, 1),
+        # 重连时前端要用这个恢复进度条，不然只能显示一句「重连中」
+        "frac": job._last[0], "msg": job._last[1],
     }
 
 
