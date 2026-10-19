@@ -830,11 +830,58 @@ $('btn-import-go').addEventListener('click', async () => {
   };
   es.onerror = () => {
     es.close();
-    setProgress(0, '连接中断（任务可能仍在后台运行）');
-    $('btn-import-go').disabled = false;
-    loadLessons();
+    // 不要猜「可能还在跑」——直接问服务端。服务重启过的话任务已经没了。
+    setProgress(0, '连接中断，正在确认任务状态…');
+    recoverJob(jobId);
   };
 });
+
+/**
+ * SSE 断开后，去问服务端这个任务到底怎么样了。
+ *
+ * 任务表在服务端内存里，服务重启后任务就不存在了（接口返回 404）。
+ * 光凭「连接中断」四个字，用户没法判断该等还是该重来。
+ */
+async function recoverJob(jobId) {
+  let d = null;
+  try {
+    d = await api(`/api/jobs/${jobId}`);
+  } catch (e) {
+    // 404 或网络问题：任务已经不存在了
+    setProgress(0, '任务已中断（服务可能重启过），请重新导入');
+    $('btn-import-go').disabled = false;
+    return false;
+  }
+  if (!d) return false;
+
+  if (d.status === 'done' && d.result) {
+    setProgress(1, `完成：${d.result.sentences} 句`);
+    $('btn-import-go').disabled = false;
+    toast(`已导入「${d.result.title}」`);
+    $('import-sheet').classList.add('hidden');
+    $('input-url').value = '';
+    await loadLessons();
+    openLesson(d.result.id);
+    return true;
+  }
+  if (d.status === 'error') {
+    setProgress(0, '失败：' + (d.error || '未知错误'));
+    $('btn-import-go').disabled = false;
+    toast('导入失败：' + (d.error || ''), 4000);
+    return true;
+  }
+  if (d.status === 'running') {
+    // 真的还在跑：继续轮询，直到跑完
+    setProgress(0, '任务仍在运行，正在重新连接…');
+    setTimeout(async () => {
+      if (!(await recoverJob(jobId))) {
+        setTimeout(() => recoverJob(jobId), 3000);
+      }
+    }, 2500);
+    return false;
+  }
+  return false;
+}
 
 function setProgress(frac, msg) {
   $('progress-fill').style.width = `${Math.round(frac * 100)}%`;
