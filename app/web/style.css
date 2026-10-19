@@ -925,3 +925,7 @@ body { padding-top: var(--safe-t); }
   opacity: .45;
   transition: filter .28s var(--ease), opacity .28s;
 }
+
+
+/* 中文翻译默认不显示，勾上「中文」才出现 */
+#sentence-list:not(.show-cn) .sent-trans { display: none; }

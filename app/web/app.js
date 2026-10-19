@@ -606,6 +606,9 @@ function applyTextVisibility() {
     // 当前句在"隐藏字幕"模式下也保持模糊，点击才显示（听力训练的关键）
     el.classList.remove('revealed');
   });
+  // 中文翻译只有打开开关才显示——默认关着，
+  // 否则等于一进来就给了答案，练不了听力。
+  if (list) list.classList.toggle('show-cn', !!S.showCn);
 }
 
 // ---------------------------------------------------------------- 服务端记账
@@ -701,7 +704,10 @@ $('opt-hide').addEventListener('change', (e) => {
 });
 $('opt-cn').addEventListener('change', (e) => {
   S.showCn = e.target.checked;
-  toast(S.showCn ? '中文翻译功能开发中' : '已关闭中文');
+  applyTextVisibility();
+  const has = (S.sentences || []).some((s) => (s.translation || '').trim());
+  if (S.showCn && !has) toast('这门课没有中文字幕');
+  else toast(S.showCn ? '已显示中文' : '已隐藏中文');
 });
 
 // 键盘快捷键（电脑端）
