@@ -66,6 +66,54 @@ def browser_running(browser: str) -> bool:
     return exe.lower() in (r.stdout or "").lower()
 
 
+def _close_browser(browser: str, timeout: float = 20.0) -> bool:
+    """优雅关闭浏览器并等它真正退出。返回是否成功。"""
+    exe = BROWSER_PROCESS.get(browser)
+    if not exe:
+        return False
+    import time
+
+    print(f"  正在关闭 {browser} …")
+    # 先温和地请求退出（等同点窗口的叉）
+    subprocess.run(["taskkill", "/IM", exe], capture_output=True,
+                   text=True, encoding="utf-8", errors="replace")
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not browser_running(browser):
+            print("  ✓ 已退出")
+            return True
+        time.sleep(1)
+
+    # 还有残留进程（Edge 关窗口后常留后台进程），强制结束
+    print("  仍有后台进程，强制结束…")
+    subprocess.run(["taskkill", "/IM", exe, "/F"], capture_output=True,
+                   text=True, encoding="utf-8", errors="replace")
+    time.sleep(3)
+    ok = not browser_running(browser)
+    print("  ✓ 已强制退出" if ok else "  ✗ 仍无法关闭，请手动在任务管理器结束")
+    return ok
+
+
+def _reopen_browser(browser: str) -> None:
+    """导出完成后把浏览器重新打开（标签页由浏览器自己恢复）。"""
+    exe = BROWSER_PROCESS.get(browser)
+    if not exe:
+        return
+    import os as _os
+    roots = [
+        Path(_os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
+        Path(_os.environ.get("ProgramFiles", r"C:\Program Files")),
+        Path(_os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Edge" / "Application",
+    ]
+    for root in roots:
+        cand = root / "Microsoft" / "Edge" / "Application" / exe
+        if cand.exists():
+            subprocess.Popen([str(cand)], creationflags=0x00000008)
+            print("  已重新打开 Edge")
+            return
+    print("  （没能自动重开，请手动打开）")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="导出浏览器 cookies 供下载使用")
     ap.add_argument("--browser", default="edge",
@@ -73,6 +121,8 @@ def main() -> int:
                     help="从哪个浏览器读取（默认 edge）")
     ap.add_argument("--out", default=str(DEFAULT_OUT),
                     help=f"输出文件路径（默认 {DEFAULT_OUT}）")
+    ap.add_argument("--auto-close", action="store_true",
+                    help="自动关闭浏览器、导出后重新打开（推荐）")
     ap.add_argument("--force", action="store_true",
                     help="即使浏览器在运行也强行尝试")
     args = ap.parse_args()
@@ -86,8 +136,18 @@ def main() -> int:
     print(f"  来源浏览器 : {browser}")
     print(f"  输出文件   : {out}")
 
+    did_auto_close = False
     if browser_running(browser) and browser not in UNLOCKED_BROWSERS \
-            and not args.force:
+            and not args.force and args.auto_close:
+        print()
+        print(f"  {browser} 正在运行。为了读取 cookies，需要先把它关掉。")
+        print("  （Edge 会对 cookie 文件加独占锁；关掉后会自动重开）")
+        if not _close_browser(browser):
+            return 2
+        did_auto_close = True
+
+    if browser_running(browser) and browser not in UNLOCKED_BROWSERS \
+            and not args.force and not did_auto_close:
         print()
         print(f"  ✗ {browser} 正在运行，它的 cookie 数据库被锁住了。")
         print()
@@ -166,6 +226,8 @@ def main() -> int:
 
     print("\n  ⚠ 这个文件等同于你的登录凭证，不要分享给任何人。")
     print("    不需要时直接删除即可，程序会自动回到「无 cookies」状态。")
+    if did_auto_close:
+        _reopen_browser(browser)
     return 0
 
 

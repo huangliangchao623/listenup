@@ -298,10 +298,45 @@ def _subprocess_env() -> dict:
 # Bilibili captions
 # ---------------------------------------------------------------------------
 
+def bili_sessdata_path() -> Path:
+    """存放 B 站 SESSDATA 的文件（和 natapp token 一样属于本机机密）。"""
+    return C.DATA_DIR / "bili_sessdata.txt"
+
+
 def _bili_cookie() -> str | None:
+    """取 B 站登录态（SESSDATA）。
+
+    三个来源，按优先级：
+      1. 环境变量 LISTENUP_BILI_SESSDATA
+      2. data/bili_sessdata.txt（控制台里粘贴保存的）
+      3. 都没有就返回 None，字幕接口会返回空，自动退回语音识别
+
+    为什么不用浏览器导出的 cookie 文件：
+    新版 Chromium（Edge 127+）对 cookies 启用 App-Bound 加密，
+    yt-dlp 报 "Failed to decrypt with DPAPI"，解不开。
+    而 B 站字幕接口只需要 SESSDATA 这一个值，让用户粘一次更省事。
+    """
     sess = os.environ.get("LISTENUP_BILI_SESSDATA")
     if sess:
-        return f"SESSDATA={sess}"
+        return f"SESSDATA={sess.strip()}"
+    p = bili_sessdata_path()
+    try:
+        if p.exists():
+            raw = p.read_text(encoding="utf-8", errors="replace")
+            # 文件里带说明注释，逐行挑第一个不是注释也不是空行的
+            v = ""
+            for line in raw.splitlines():
+                s = line.strip()
+                if s and not s.startswith("#"):
+                    v = s
+                    break
+            # 用户可能把整段 "SESSDATA=xxx" 粘进来，容错处理
+            if v.lower().startswith("sessdata="):
+                v = v.split("=", 1)[1].strip()
+            if v:
+                return f"SESSDATA={v}"
+    except Exception:
+        pass
     return None
 
 
@@ -368,6 +403,29 @@ def pick_english_track(tracks: list[dict]) -> dict | None:
         return s
     best = max(tracks, key=score)
     return best if score(best) > 0 else None
+
+
+def pick_chinese_track(tracks: list[dict]) -> dict | None:
+    """从字幕列表里挑一条中文轨（人工优先于机器翻译）。"""
+    def score(t: dict) -> int:
+        lan = (t.get("lan") or "").lower()
+        doc = t.get("lan_doc") or ""
+        s = 0
+        if lan.startswith("zh"):
+            s += 100
+        if "\u4e2d\u6587" in doc:
+            s += 50
+        if lan.startswith("ai-"):
+            s -= 20
+        return s
+
+    best = None
+    best_score = 0
+    for tr in tracks:
+        sc = score(tr)
+        if sc > best_score:
+            best, best_score = tr, sc
+    return best
 
 
 def download_bilibili_subtitle(track: dict, dst: Path) -> Path:

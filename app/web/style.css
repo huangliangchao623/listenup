@@ -883,3 +883,45 @@ body { padding-top: var(--safe-t); }
     transition-duration: .01ms !important;
   }
 }
+
+/* ---------- 隐藏原文：模糊到完全看不清，但保留排版感 ---------- */
+.sent.hide-text .sent-text {
+  filter: blur(7px);
+  opacity: .62;
+  transition: filter .28s var(--ease), opacity .28s;
+  user-select: none;
+}
+.sent.hide-text .sent-text::after { content: ""; }
+.sent.hide-text.revealed .sent-text {
+  filter: none;
+  opacity: 1;
+}
+
+/* 隐藏状态下给个轻提示（只在当前句显示，避免满屏噪音） */
+.sent.hide-text:not(.revealed) .sent-sub::before {
+  content: "点文字看原文";
+  color: var(--t4);
+  font-size: 10.5px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.sent.hide-text.current:not(.revealed) .sent-sub::before { opacity: 1; }
+
+/* ---------- 中文译文 ---------- */
+.sent-trans {
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--t3);
+  padding-left: 2px;
+  border-left: 2px solid rgba(124, 92, 255, .35);
+  padding-left: 10px;
+}
+.sent.current .sent-trans { color: var(--t2); }
+
+/* 译文在隐藏原文时也要藏起来（否则等于直接给答案） */
+.sent.hide-text:not(.revealed) .sent-trans {
+  filter: blur(7px);
+  opacity: .45;
+  transition: filter .28s var(--ease), opacity .28s;
+}

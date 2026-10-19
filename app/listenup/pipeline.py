@@ -59,6 +59,40 @@ def _sid(path: Path) -> str:
     return f"{safe[:48]}_{int(time.time()):x}"
 
 
+_ZH_MARKERS = ("zh", "chs", "chi", "中文", "简中", "繁中", "chinese")
+
+
+def _looks_chinese_path(p: Path) -> bool:
+    """判断副字幕文件名是不是中文轨（xxx.zh.srt / xxx.chs.srt / xxx.中文.srt）。"""
+    name = p.name.lower()
+    return any(m in name for m in _ZH_MARKERS)
+
+
+def _attach_zh(lesson, paths: list) -> object:
+    """把中文字幕按时间对齐挂到 lesson.sentences 上。
+
+    这是整条链路里唯一可能失败的"锦上添花"步骤，
+    所以所有异常都吞掉：没有译文最多是不显示，不能让导入失败。
+    """
+    if not paths:
+        return lesson
+    try:
+        cues: list = []
+        for p in paths:
+            try:
+                cues.extend(captions.parse_any(p))
+            except Exception:
+                pass
+        if cues and getattr(lesson, "sentences", None):
+            from .sentences import attach_translations
+            n = attach_translations(lesson.sentences, cues)
+            if n:
+                print(f"    中文翻译：{n} 句已对齐")
+    except Exception:
+        pass
+    return lesson
+
+
 def _find_sidecar(media: Path) -> list[Path]:
     """Subtitle files sitting next to a local video, in any common language tag."""
     out = []
@@ -116,7 +150,7 @@ class Builder:
         self.step(0.10, "提取音轨…")
         audio16k = ffmpeg_io.extract_audio(local_media, work / "audio16k.wav")
 
-        return self._finish(
+        lesson = self._finish(
             lid=lid,
             title=title or media_path.stem,
             media=local_media,
@@ -126,6 +160,10 @@ class Builder:
             caption_files=sidecars,
             meta={"source": "local", "origin": str(media_path)},
         )
+        # 本地文件：副字幕里挑出中文轨挂上
+        lesson = _attach_zh(lesson, [p for p in sidecars
+                                     if _looks_chinese_path(p)])
+        return lesson
 
     def from_url(self, url: str, lesson_id: str | None = None,
                  keep_video: bool = True) -> Lesson:
@@ -164,9 +202,12 @@ class Builder:
 
         # Captions: Bilibili API first (best language metadata), then yt-dlp.
         caption_files: list[Path] = []
+        zh_files: list[Path] = []
+        _tracks: list = []
         if platform == "bilibili":
             self.step(0.52, "尝试获取 B 站字幕…")
             tracks = sources.bilibili_subtitles(url)
+            _tracks = tracks
             track = sources.pick_english_track(tracks)
             if track:
                 try:
@@ -183,10 +224,27 @@ class Builder:
             except Exception:
                 caption_files = []
 
+        # 中文翻译轨：和英文分开抓，绝不和它抢主字幕
+        if _tracks:
+            zt = sources.pick_chinese_track(_tracks)
+            if zt:
+                try:
+                    zd = C.SUB_DIR / f"{lid}.bili.zh.json"
+                    sources.download_bilibili_subtitle(zt, zd)
+                    zh_files.append(zd)
+                except Exception:
+                    pass
+        if not zh_files and platform not in sources.NO_CAPTION_PLATFORMS:
+            try:
+                zh_files = sources.download_subtitles(
+                    url, work / "subs_zh", langs="zh.*,zh-Hans,zh-CN,zh")
+            except Exception:
+                zh_files = []
+
         if platform in sources.NO_CAPTION_PLATFORMS and not caption_files:
             self.step(0.55, "该平台没有字幕接口，改用本地语音识别…")
 
-        return self._finish(
+        lesson = self._finish(
             lid=lid,
             title=title,
             media=local_media,
@@ -202,6 +260,8 @@ class Builder:
             },
             caption_kind_hint=("manual" if meta_probe.get("manual") else None),
         )
+        lesson = _attach_zh(lesson, zh_files)
+        return lesson
 
     # -- shared tail -------------------------------------------------------
 

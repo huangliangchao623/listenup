@@ -16,7 +16,7 @@ const S = {
   playing: false,
   loop: false,
   autoAdvance: true,
-  hideText: false,
+  hideText: true,
   showCn: false,
   rate: 1.0,
   audio: new Audio(),
@@ -390,10 +390,12 @@ function renderSentences() {
       <div class="sent-no">${String(i + 1).padStart(2, '0')}</div>
       <div class="sent-body">
         <div class="sent-text">${escapeHtml(s.text)}</div>
+        ${s.translation ? `<div class="sent-trans">${escapeHtml(s.translation)}</div>` : ''}
         <div class="sent-sub">
           <span>${fmtTime(s.start)} - ${fmtTime(s.end)}</span>
           <span>${(s.duration || 0).toFixed(1)}s</span>
           <div class="sent-actions">
+            <button class="sent-act" data-act="reveal" title="显示 / 隐藏原文">👁</button>
             <button class="sent-act" data-act="tts" title="朗读这一句">🔊</button>
             <button class="sent-act" data-act="slow" title="0.75 倍速重播">🐢</button>
             <button class="sent-act" data-act="loop" title="单句循环">🔁</button>
@@ -407,6 +409,15 @@ function renderSentences() {
       const act = ev.target.dataset?.act;
       const i = Number(el.dataset.i);
       if (act) { ev.stopPropagation(); runAction(act, i); return; }
+
+      // 隐藏模式下，点「文字本身」是"我要看原文"，点其他位置是"播放这一句"。
+      // 这样既保留"先听再看"的练习方式，又不用去找小按钮。
+      if (S.hideText && !el.classList.contains('revealed')
+          && ev.target.classList.contains('sent-text')) {
+        ev.stopPropagation();
+        el.classList.add('revealed');
+        return;
+      }
       playIndex(i);
     });
   });
@@ -414,6 +425,14 @@ function renderSentences() {
 }
 
 function runAction(act, i) {
+  // 眼睛按钮：只切换这一句的显示状态，不播放。
+  // 练听力的正确顺序是「先听，实在听不出来再看」，所以默认全模糊。
+  if (act === 'reveal') {
+    const el = document.querySelector(
+      `#sentence-list .sent[data-i="${i}"]`);
+    if (el) el.classList.toggle('revealed');
+    return;
+  }
   if (act === 'tts')  return speakSentence(i);
   if (act === 'slow') { playIndex(i, { rate: 0.75, temporary: true }); return; }
   if (act === 'loop') {
@@ -1026,6 +1045,89 @@ async function enterApp() {
   loadEnv();
 }
 
+// ---------------------------------------------------------------- 输入对话框
+/**
+ * 页面内的文本输入框，替代 prompt()。
+ *
+ * Android WebView 默认不支持 prompt（需要原生 onJsPrompt 回调），
+ * 直接用会让"改昵称"变成一个点了没反应的死按钮。
+ * 这里用 DOM 自己实现，任何环境都能用。
+ *
+ * @returns {Promise<string|null>} 确认返回文本，取消返回 null
+ */
+function askText(title, value = '', placeholder = '') {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:200',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:rgba(0,0,0,.62)', 'backdrop-filter:blur(6px)',
+      'padding:22px',
+    ].join(';');
+
+    const card = document.createElement('div');
+    card.style.cssText = [
+      'width:100%', 'max-width:380px',
+      'background:rgba(20,24,33,.98)',
+      'border:1px solid rgba(255,255,255,.14)',
+      'border-radius:22px', 'padding:22px',
+      'box-shadow:0 24px 70px rgba(0,0,0,.7)',
+    ].join(';');
+
+    const h = document.createElement('div');
+    h.textContent = title;
+    h.style.cssText = 'font-size:17px;font-weight:700;color:#f2f5fa;margin-bottom:14px';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    input.placeholder = placeholder;
+    input.maxLength = 32;
+    input.style.cssText = [
+      'width:100%', 'box-sizing:border-box',
+      'padding:13px 15px', 'border-radius:14px',
+      'background:rgba(255,255,255,.07)',
+      'border:1px solid rgba(255,255,255,.16)',
+      'color:#f2f5fa', 'font-size:16px', 'outline:none',
+    ].join(';');
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;margin-top:18px';
+
+    const cancel = document.createElement('button');
+    cancel.textContent = '取消';
+    cancel.style.cssText = [
+      'flex:1', 'padding:13px', 'border-radius:999px', 'border:none',
+      'background:rgba(255,255,255,.09)', 'color:#c8cfdc',
+      'font-size:15px', 'cursor:pointer',
+    ].join(';');
+
+    const ok = document.createElement('button');
+    ok.textContent = '确定';
+    ok.style.cssText = [
+      'flex:1', 'padding:13px', 'border-radius:999px', 'border:none',
+      'background:linear-gradient(135deg,#4f8cff,#7c5cff)', 'color:#fff',
+      'font-size:15px', 'font-weight:650', 'cursor:pointer',
+    ].join(';');
+
+    const close = (v) => { wrap.remove(); resolve(v); };
+    cancel.onclick = () => close(null);
+    ok.onclick = () => close(input.value.trim());
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(null); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); close(input.value.trim()); }
+      if (e.key === 'Escape') { e.preventDefault(); close(null); }
+    });
+
+    row.append(cancel, ok);
+    card.append(h, input, row);
+    wrap.append(card);
+    document.body.append(wrap);
+    // 移动端要等一帧才能聚焦并弹出键盘
+    setTimeout(() => { input.focus(); input.select(); }, 60);
+  });
+}
+
 function renderProfile() {
   const u = AUTH.user;
 
@@ -1117,13 +1219,78 @@ $('auth-switch-link').addEventListener('click', () => {
   });
 });
 
+// ---------------------------------------------------------------- 头像上传
+/**
+ * 把用户选的图压到 256×256 再上传。
+ *
+ * 手机上拍一张照片就是 3-8 MB，直接存 base64 会把数据库撑大、
+ * 每次登录还要把它整个传下来。所以这里统一缩放 + JPEG 压缩。
+ */
+function compressImage(file, size = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const s = Math.min(size, Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // 正方形居中裁剪，避免头像被拉变形
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('图片读取失败'));
+    };
+    img.src = url;
+  });
+}
+
+async function uploadAvatar(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    toast('请选一张图片');
+    return;
+  }
+  try {
+    toast('正在处理图片…');
+    const dataUrl = await compressImage(file);
+    const data = await api('/api/auth/profile', {
+      method: 'POST',
+      body: JSON.stringify({ avatar: dataUrl }),
+    });
+    AUTH.user = data.user;
+    renderProfile();
+    toast('头像已更新');
+  } catch (e) {
+    toast('上传失败：' + e.message);
+  }
+}
+
+$('avatar-file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  uploadAvatar(f);
+  e.target.value = '';
+});
+
+$('profile-avatar').addEventListener('click', () => {
+  if (!AUTH.user) { showAuth(); return; }
+  $('avatar-file').click();
+});
+
 $('btn-avatar').addEventListener('click', () =>
   AUTH.user ? switchView('settings') : showAuth());
 $('btn-logout').addEventListener('click', logout);
 
 $('btn-edit-name').addEventListener('click', async () => {
   const cur = AUTH.user?.displayName || AUTH.user?.username || '';
-  const next = prompt('新的昵称（最多 32 字）', cur);
+  const next = await askText('修改昵称', cur, '最多 32 个字');
   if (next === null) return;
   try {
     const data = await apiAuthed('/api/auth/profile', {

@@ -34,6 +34,10 @@ os.environ.setdefault("TMP", str(TOOLS / "tmp"))
 os.environ.setdefault("OMP_NUM_THREADS", "6")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
+# 抖音等平台需要登录态才能解析；没有 cookies.txt 时自动从 Edge 读取。
+# 用户只要在 Edge 里登录过抖音，就能直接粘贴链接导入。
+os.environ.setdefault("LISTENUP_COOKIES_FROM_BROWSER", "edge")
+
 
 def local_ip() -> str | None:
     """Best-effort LAN address (the one a phone on the same Wi-Fi can reach)."""

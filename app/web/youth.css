@@ -1,0 +1,283 @@
+/* ============================================================
+   玻璃拟态 · 年轻化皮肤 v4
+   ------------------------------------------------------------
+   两个目标：
+     1. 半透明 —— 用户自定义的背景要能透出来，而不是被一块深灰盖住
+     2. 年轻化 —— 更亮的强调色、更大的圆角、柔和的光晕
+
+   实现方式：只覆盖视觉属性，不动布局。
+   所有面板统一用 rgba + backdrop-filter，形成"毛玻璃"。
+   背景层本来就存在（#bg-layer），之前是被不透明的卡片挡住了。
+   ============================================================ */
+
+:root {
+  /* 面板底色：半透明，让背景透出来 */
+  --glass-1: rgba(14, 17, 24, 0.86);
+  --glass-2: rgba(24, 28, 38, 0.90);
+  --glass-3: rgba(38, 44, 60, 0.92);
+  --glass-strong: rgba(10, 12, 17, 0.95);
+
+  /* 更年轻的强调色 */
+  --youth-1: #4f8cff;      /* 亮蓝 */
+  --youth-2: #7c5cff;      /* 紫 */
+  --youth-3: #ff5c8a;      /* 粉 */
+  --youth-4: #2ee6a8;      /* 薄荷绿 */
+
+  /* 更大的圆角 */
+  --r-card: 22px;
+  --r-pill: 999px;
+
+  /* 玻璃边框 */
+  --glass-line: rgba(255, 255, 255, 0.10);
+  --glass-line-2: rgba(255, 255, 255, 0.16);
+}
+
+/* ---------- 通用玻璃面板 ---------- */
+.card,
+.stat,
+.setting-group,
+.player-wrap,
+.skeleton {
+  background: var(--glass-1);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--glass-line-2);
+  border-radius: var(--r-card);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 卡片悬停：微微发光而不是变灰 */
+.card:hover {
+  background: var(--glass-2);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(79, 140, 255, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* ---------- 顶栏 / 底部导航 ---------- */
+.topbar {
+  background: linear-gradient(180deg,
+    rgba(8, 9, 13, 0.72) 0%,
+    rgba(8, 9, 13, 0.30) 70%,
+    transparent 100%);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.tabbar {
+  background: rgba(10, 12, 18, 0.72);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  border-top: 1px solid var(--glass-line-2);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- 搜索框 / 筛选 ---------- */
+.searchbar {
+  background: var(--glass-1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-pill);
+  padding: 11px 18px;
+}
+
+.chip-btn {
+  background: var(--glass-1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-pill);
+  color: var(--t2);
+}
+
+.chip-btn.active {
+  background: linear-gradient(135deg, var(--youth-1), var(--youth-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 650;
+  box-shadow: 0 6px 20px rgba(79, 140, 255, 0.45);
+}
+
+/* ---------- 主标题：渐变字 ---------- */
+.topbar h1 {
+  background: linear-gradient(115deg, #ffffff 10%, var(--youth-1) 60%, var(--youth-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- 继续学习主视觉卡：更亮的渐变 ---------- */
+.hero {
+  background: linear-gradient(135deg,
+    #4f8cff 0%, #6b6bff 42%, #a855f7 72%, #ff5c8a 100%);
+  border-radius: 26px;
+  box-shadow:
+    0 20px 48px rgba(79, 140, 255, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+.hero-go {
+  background: #ffffff;
+  color: #4361ee;
+  border-radius: var(--r-pill);
+}
+
+/* ---------- 统计胶囊 ---------- */
+.stat-pill {
+  background: var(--glass-1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-line);
+  border-radius: 20px;
+}
+
+.stat-pill.accent .v {
+  background: linear-gradient(120deg, var(--youth-1), var(--youth-4));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- 按钮：渐变 + 光晕 ---------- */
+.primary-btn {
+  background: linear-gradient(135deg, var(--youth-1), var(--youth-2));
+  border-radius: var(--r-pill);
+  box-shadow: 0 8px 26px rgba(79, 140, 255, 0.45);
+  font-weight: 700;
+}
+
+.ghost-btn {
+  background: var(--glass-1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-line-2);
+  border-radius: var(--r-pill);
+}
+
+/* ---------- 句子列表 ---------- */
+.sent {
+  border-radius: 16px;
+  border-left-width: 3px;
+}
+
+.sent.current {
+  background: linear-gradient(90deg,
+    rgba(79, 140, 255, 0.26), rgba(124, 92, 255, 0.10));
+  border-left-color: var(--youth-1);
+  box-shadow:
+    inset 0 0 0 1px rgba(79, 140, 255, 0.32),
+    0 6px 22px rgba(79, 140, 255, 0.16);
+}
+
+.sent.current .sent-no { color: var(--youth-1); }
+
+/* ---------- 播放器控制 ---------- */
+.t-play {
+  background: linear-gradient(135deg, var(--youth-1), var(--youth-2));
+  box-shadow: 0 8px 26px rgba(79, 140, 255, 0.5);
+  border-radius: 50%;
+}
+
+#seek::-webkit-slider-thumb {
+  border-color: var(--youth-1);
+  box-shadow: 0 2px 10px rgba(79, 140, 255, 0.6);
+}
+
+/* ---------- 弹层 ---------- */
+.sheet-body {
+  background: rgba(14, 17, 24, 0.94);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  border-top: 1px solid var(--glass-line-2);
+  border-radius: 28px 28px 0 0;
+}
+
+.seg {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--r-pill);
+}
+
+.seg-item.active {
+  background: linear-gradient(135deg, var(--youth-1), var(--youth-2));
+  box-shadow: 0 4px 16px rgba(79, 140, 255, 0.45);
+  border-radius: var(--r-pill);
+}
+
+.text-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-line-2);
+  border-radius: 16px;
+}
+
+.text-input:focus {
+  border-color: var(--youth-1);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
+}
+
+/* ---------- 设置行 ---------- */
+.setting-group { overflow: hidden; }
+.setting-row:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* ---------- 底部导航选中态 ---------- */
+.tab.active { color: var(--youth-1); }
+.tab.active::before { background: rgba(79, 140, 255, 0.18); }
+
+/* ---------- Toast ---------- */
+.toast {
+  background: rgba(30, 34, 46, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-line-2);
+  border-radius: var(--r-pill);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+/* 头像可点击，给个明确的互动提示 */
+.profile-avatar {
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  transition: transform .15s var(--spring), box-shadow .2s;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .12);
+}
+.profile-avatar:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, .55);
+}
+.profile-avatar:active { transform: scale(.95); }
+.avatar-btn { background-size: cover; background-position: center; }
+
+
+/* ---------- 学习页必须有底板，否则文字浮在照片上完全看不清 ----------
+   这是实测发现的问题：只给卡片加半透明不够，句子列表本身没有面板，
+   用户的照片背景会直接透到文字底下。整页加一层毛玻璃才能既透背景又保可读。 */
+#view-study.active {
+  background: linear-gradient(180deg,
+    rgba(9, 11, 16, 0.90) 0%,
+    rgba(9, 11, 16, 0.93) 60%,
+    rgba(9, 11, 16, 0.95) 100%);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+}
+
+/* 素材库同理：卡片之间还有缝隙会漏出照片 */
+#view-library,
+#view-progress,
+#view-settings {
+  background: linear-gradient(180deg,
+    rgba(9, 11, 16, 0.78) 0%,
+    rgba(9, 11, 16, 0.88) 100%);
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
+}
+
+/* 顶栏在学习页里也要实一点 */
+.study-topbar {
+  background: linear-gradient(180deg, rgba(9, 11, 16, .96), transparent);
+}

@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/auth.css">
 <link rel="stylesheet" href="/static/visual.css">
+<link rel="stylesheet" href="/static/youth.css">
 </head>
 <body>
 
@@ -146,7 +147,7 @@
   <div class="sentence-toolbar">
     <span id="sentence-counter" class="counter">0 / 0</span>
     <label class="switch"><input id="opt-auto" type="checkbox" checked><span>自动下一句</span></label>
-    <label class="switch"><input id="opt-hide" type="checkbox"><span>隐藏字幕</span></label>
+    <label class="switch"><input id="opt-hide" type="checkbox" checked><span>隐藏原文</span></label>
     <label class="switch"><input id="opt-cn" type="checkbox"><span>中文</span></label>
   </div>
 
@@ -170,7 +171,8 @@
   <!-- 个人中心 -->
   <section class="setting-group">
     <div class="profile-head">
-      <div id="profile-avatar" class="profile-avatar">我</div>
+      <div id="profile-avatar" class="profile-avatar" role="button" title="点头像换一张">我</div>
+      <input id="avatar-file" type="file" accept="image/*" hidden>
       <div style="flex:1;min-width:0">
         <div id="profile-name" class="profile-name">未登录</div>
         <div id="profile-meta" class="profile-meta">—</div>

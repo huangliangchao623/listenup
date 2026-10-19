@@ -118,6 +118,9 @@ class Sentence:
     # is a compromise, so a short fragment produced by one is allowed to merge
     # back even though it may carry a period from the original sentence.
     forced_cut: bool = False
+    # Chinese translation / subtitle for this unit, aligned by time overlap.
+    # Empty when the source had no Chinese track.
+    translation: str = ""
 
     @property
     def duration(self) -> float:
@@ -130,6 +133,7 @@ class Sentence:
             "end": round(self.end, 3),
             "duration": self.duration,
             "text": self.text,
+            "translation": self.translation,
             "words": self.words,
             "audio": self.audio,
             "source": self.source,
@@ -405,3 +409,41 @@ def to_vtt(sentences: Sequence[Sentence]) -> str:
             f"{n}\n{_fmt_ts(s.start, '.')} --> {_fmt_ts(s.end, '.')}\n{s.text}\n"
         )
     return "\n".join(blocks)
+
+
+def _has_cjk(s: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in s)
+
+
+def attach_translations(sentences: Sequence["Sentence"],
+                        cues: Sequence["Cue"]) -> int:
+    """把中文时间轴对齐到英文句子上，返回成功填上的句子数。
+
+    对齐规则：**按时间重叠**，不是按序号。
+    中文一句往往覆盖多句英文，反之亦然，所以只要时间区间有交集就把文字接上。
+
+    没有任何重叠的句子会保持空字符串——前端据此决定是否显示译文行。
+    """
+    if not sentences or not cues:
+        return 0
+
+    ordered = sorted(cues, key=lambda c: c.start)
+    filled = 0
+
+    for s in sentences:
+        parts: list[str] = []
+        for c in ordered:
+            # 区间无交集就跳过
+            if c.end <= s.start or c.start >= s.end:
+                continue
+            txt = (c.text or "").strip()
+            if txt:
+                parts.append(txt)
+        if not parts:
+            continue
+        # 中文直接拼接；英文之间留空格
+        joined = "".join(parts) if _has_cjk("".join(parts)) else " ".join(parts)
+        s.translation = joined
+        filled += 1
+
+    return filled
