@@ -2,9 +2,12 @@ package com.listenup.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
@@ -14,6 +17,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.JsPromptResult;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -47,6 +52,10 @@ public class MainActivity extends Activity {
     private WebView web;
     private ProgressBar bar;
     private SharedPreferences prefs;
+
+    private static final int REQ_FILE = 1001;
+    private ValueCallback<Uri[]> fileCallback;
+    private JsPromptResult jsResult;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -193,7 +202,74 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
         web.setBackgroundColor(Color.parseColor("#08090D"));
-        web.setWebChromeClient(new WebChromeClient());
+                // 网页里的 <input type="file"> 和 prompt() 都需要原生支持，
+        // 否则在手机上完全没反应（这是 Android WebView 的默认行为，不是 bug）。
+        web.setWebChromeClient(new WebChromeClient() {
+
+            @Override
+            public boolean onShowFileChooser(WebView view,
+                                             ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
+                // 上一次的没走完，先取消掉，避免回调泄漏
+                if (fileCallback != null) {
+                    fileCallback.onReceiveValue(null);
+                }
+                fileCallback = callback;
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
+                // 允许多选（背景和头像虽然都是单张，但保持通用）
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+
+                try {
+                    startActivityForResult(
+                            Intent.createChooser(intent, "选择图片"),
+                            REQ_FILE);
+                } catch (Exception e) {
+                    fileCallback = null;
+                    Toast.makeText(MainActivity.this,
+                            "没有可用的文件选择器", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                return true;
+            }
+
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message,
+                                      String defaultValue, JsPromptResult result) {
+                // 网页用 prompt() 改昵称之类；不实现的话会静默返回 null
+                final EditText input = new EditText(MainActivity.this);
+                input.setText(defaultValue == null ? "" : defaultValue);
+                input.setSingleLine(true);
+                input.setPadding(dp(16), dp(12), dp(16), dp(12));
+
+                // 先记下来再弹窗：否则用户秒点按钮时回调里还是旧值
+                final JsPromptResult pending = result;
+                jsResult = result;
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(message)
+                        .setView(input)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                pending.confirm(input.getText().toString());
+                            }
+                        })
+                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                jsResult.cancel();
+                            }
+                        })
+                        .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                            @Override public void onCancel(DialogInterface d) {
+                                jsResult.cancel();
+                            }
+                        })
+                        .show();
+                return true;
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
 
             @Override
@@ -278,6 +354,33 @@ public class MainActivity extends Activity {
             "<a class='b s' href='listenup://change'>修改地址</a>" +
             "</div></body></html>";
         web.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
+    }
+
+
+    // ---------------------------------------------------------------- 文件选择回调
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        if (req != REQ_FILE) {
+            super.onActivityResult(req, res, data);
+            return;
+        }
+        Uri[] out = null;
+        if (res == RESULT_OK && data != null) {
+            if (data.getData() != null) {
+                out = new Uri[]{ data.getData() };
+            } else if (data.getClipData() != null) {
+                int n = data.getClipData().getItemCount();
+                out = new Uri[n];
+                for (int i = 0; i < n; i++) {
+                    out[i] = data.getClipData().getItemAt(i).getUri();
+                }
+            }
+        }
+        if (fileCallback != null) {
+            fileCallback.onReceiveValue(out);
+            fileCallback = null;
+        }
     }
 
     // ---------------------------------------------------------------- 交互

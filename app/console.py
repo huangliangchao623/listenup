@@ -922,6 +922,22 @@ class Console(tk.Tk):
         self.lb_tunnel_url.pack(fill="x", pady=(6, 0))
 
         # 危险操作
+        # 第三方登录（B 站中文字幕 / 抖音下载都需要登录态）
+        c2b = self._card(wrap)
+        c2b.pack(fill="x", pady=(12, 0))
+        self._h(c2b, "第三方登录")
+        row_x = tk.Frame(c2b, bg=CARD)
+        row_x.pack(fill="x")
+        self._btn(row_x, "设置 B 站登录", self._open_bili_login, "ghost", 0).pack(
+            side="left", padx=(0, 8))
+        self._btn(row_x, "设置抖音登录", self._open_douyin_login, "ghost", 0).pack(
+            side="left", padx=(0, 8))
+        self._btn(row_x, "重新获取字幕", self._run_backfill, "ghost", 0).pack(side="left")
+        tk.Label(c2b,
+                 text="B 站登录后，导入视频会自动带中文翻译；抖音必须配 cookies 才能下载。",
+                 bg=CARD, fg=DIM2, font=("Microsoft YaHei UI", 8),
+                 anchor="w", wraplength=560, justify="left").pack(fill="x", pady=(8, 0))
+
         c3 = self._card(wrap)
         c3.pack(fill="x", pady=(12, 0))
         self._h(c3, "维护")
@@ -1574,6 +1590,54 @@ class Console(tk.Tk):
                  (f"，{bad_n} 项需要注意" if bad_n else "，全部正常"),
             fg=GREEN if not bad_n else ORANGE)
 
+
+    # ---- 第三方登录 ----
+
+    def _run_in_console(self, bat_name: str) -> None:
+        """在新控制台窗口里跑一个 .bat。
+
+        控制台本身是 pythonw 启动的（没有控制台窗口），
+        直接 Popen 的话子进程的输出去向不明，用户也看不到提示。
+        """
+        bat = ROOT / bat_name
+        if not bat.exists():
+            messagebox.showerror("找不到文件", f"{bat}\n\n可能被移动或删除了。")
+            return
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", str(bat)],
+                cwd=str(ROOT),
+                creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
+        except Exception as e:  # noqa: BLE001
+            messagebox.showerror("启动失败", str(e))
+
+    def _open_bili_login(self) -> None:
+        self._run_in_console("设置B站登录.bat")
+        self.status.set("已打开 B 站登录向导。设置完成后需要重启服务生效。")
+
+    def _open_douyin_login(self) -> None:
+        self._run_in_console("设置抖音登录.bat")
+        self.status.set("已打开抖音登录向导。设置完成后需要重启服务生效。")
+
+    def _run_backfill(self) -> None:
+        """对已有课程重新抓字幕并回填译文（不需要重新导入）。"""
+        if not messagebox.askokcancel(
+                "重新获取字幕",
+                "会尝试为所有 B 站课程重新抓取中文字幕并对齐。\n\n"
+                "只改 lesson.json 里的译文，不会动媒体和句子切分。\n"
+                "课程多的话可能要跑一两分钟。"):
+            return
+        try:
+            # 用 python.exe（不是 pythonw）——需要看到输出
+            exe = str(TOOLS / "python" / "python.exe")
+            subprocess.Popen(
+                [exe, str(ROOT / "tools" / "backfill_translations.py")],
+                cwd=str(ROOT),
+                creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
+            self.status.set("已开始重新获取字幕，请看新开的窗口。")
+        except Exception as e:  # noqa: BLE001
+            messagebox.showerror("启动失败", str(e))
+
     # ================================================================ 设置动作
 
     def _toggle_autostart(self) -> None:
@@ -1671,23 +1735,69 @@ class Console(tk.Tk):
             webbrowser.open(target)
 
 
-def _single_instance() -> bool:
-    """保证同时只开一个控制台窗口。
+def _pid_alive(pid: int) -> bool:
+    """判断 pid 是不是还活着，并且确实是本程序的 python 进程。
 
-    之前测试时不小心启动了多个实例，桌面上堆了好几个一模一样的窗口。
-    用 Windows 命名互斥体做判断：如果已经有一个在跑，就直接退出。
+    只看存活不够：Windows 会回收 PID，万一撞上别的程序就会误判。
+    所以顺带比对可执行文件名。
     """
     try:
         import ctypes
         from ctypes import wintypes
 
-        kernel32 = ctypes.windll.kernel32
-        kernel32.CreateMutexW.restype = wintypes.HANDLE
-        kernel32.CreateMutexW(None, False, "Local\\ListenUpConsole")
-        ERROR_ALREADY_EXISTS = 183
-        return kernel32.GetLastError() != ERROR_ALREADY_EXISTS
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.OpenProcess.restype = wintypes.HANDLE
+        PROC_QUERY_LIMITED = 0x1000
+        h = k.OpenProcess(PROC_QUERY_LIMITED, False, pid)
+        if not h:
+            return False
+        try:
+            code = wintypes.DWORD()
+            if not k.GetExitCodeProcess(h, ctypes.byref(code)):
+                return False
+            if code.value != 259:          # STILL_ACTIVE
+                return False
+            buf = ctypes.create_unicode_buffer(260)
+            size = wintypes.DWORD(260)
+            if k.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+                exe = buf.value.lower()
+                return exe.endswith("python.exe") or exe.endswith("pythonw.exe")
+            return False
+        finally:
+            k.CloseHandle(h)
     except Exception:  # noqa: BLE001
-        return True      # 判断失败时不阻止启动
+        return False
+
+
+def _single_instance() -> bool:
+    """保证同时只开一个控制台窗口。
+
+    ## 为什么不用命名互斥体
+
+    最早用的是 Windows 命名互斥体（CreateMutexW + ERROR_ALREADY_EXISTS）。
+    但它在这台机器上出了怪事：明明没有控制台在运行，
+    CreateMutexW 仍然返回 183（已存在），
+    结果是点快捷方式永远「什么都没发生」——因为程序以为自己是重复实例。
+
+    换成 PID 文件：记录自己的 PID，启动时检查那个 PID 是否还活着。
+    出问题的时候直接删 data/console.pid 就能恢复，比黑盒互斥体好排查。
+    """
+    import os
+
+    lock = ROOT / "data" / "console.pid"
+    try:
+        if lock.exists():
+            raw = lock.read_text(encoding="utf-8", errors="replace").strip()
+            if raw.isdigit() and _pid_alive(int(raw)):
+                return False
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        lock.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+    return True
 
 
 def main() -> int:

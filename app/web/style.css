@@ -929,3 +929,16 @@ body { padding-top: var(--safe-t); }
 
 /* 中文翻译默认不显示，勾上「中文」才出现 */
 #sentence-list:not(.show-cn) .sent-trans { display: none; }
+
+
+/* 仅中文：英文整行隐藏。
+   只隐藏不模糊——因为这里的目的是「看中文」，不是「练听力」。 */
+#sentence-list.cn-only .sent-text { display: none; }
+#sentence-list.cn-only .sent-trans {
+  filter: none !important;
+  opacity: 1 !important;
+  font-size: 15px;
+  color: var(--t1);
+  margin-top: 0;
+  padding-left: 10px;
+}

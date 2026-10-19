@@ -18,6 +18,7 @@ const S = {
   autoAdvance: true,
   hideText: true,
   showCn: false,
+  cnOnly: false,
   rate: 1.0,
   audio: new Audio(),
   video: null,
@@ -609,6 +610,8 @@ function applyTextVisibility() {
   // 中文翻译只有打开开关才显示——默认关着，
   // 否则等于一进来就给了答案，练不了听力。
   if (list) list.classList.toggle('show-cn', !!S.showCn);
+  // 仅中文：英文整行隐藏，只留译文
+  if (list) list.classList.toggle('cn-only', !!S.cnOnly);
 }
 
 // ---------------------------------------------------------------- 服务端记账
@@ -701,6 +704,16 @@ $('opt-hide').addEventListener('change', (e) => {
   S.hideText = e.target.checked;
   applyTextVisibility();
   if (S.hideText) toast('字幕已隐藏，点句子可显示');
+});
+$('opt-cnonly').addEventListener('change', (e) => {
+  S.cnOnly = e.target.checked;
+  // 只看中文时必须同时打开中文，否则整页空白
+  if (S.cnOnly && !S.showCn) {
+    S.showCn = true;
+    $('opt-cn').checked = true;
+  }
+  applyTextVisibility();
+  toast(S.cnOnly ? '仅显示中文' : '已恢复显示英文');
 });
 $('opt-cn').addEventListener('change', (e) => {
   S.showCn = e.target.checked;

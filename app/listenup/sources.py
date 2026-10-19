@@ -135,8 +135,65 @@ def cookies_available() -> tuple[bool, str]:
                    f"或设置 LISTENUP_COOKIES_FROM_BROWSER=edge")
 
 
+def douyin_cookie_path() -> Path:
+    """用户粘贴的抖音 cookie 字符串（形如 `a=1; b=2`）。"""
+    return C.DATA_DIR / "douyin_cookie.txt"
+
+
+def _parse_cookie_string(raw: str) -> list[tuple[str, str]]:
+    """把 `a=1; b=2; c=3` 解析成 [(name, value), ...]。
+
+    容错：允许换行分隔、多余空格、行尾分号。
+    """
+    out: list[tuple[str, str]] = []
+    for chunk in raw.replace("\n", ";").split(";"):
+        s = chunk.strip()
+        if not s or s.startswith("#") or "=" not in s:
+            continue
+        name, _, value = s.partition("=")
+        name = name.strip()
+        value = value.strip().strip('"')
+        if name:
+            out.append((name, value))
+    return out
+
+
+def build_cookies_from_string(raw: str) -> Path:
+    """把粘贴的 cookie 字符串写成 Netscape 格式的 cookies.txt。
+
+    Netscape 格式每行 7 个字段（Tab 分隔）：
+        domain  flag  path  secure  expiry  name  value
+    """
+    path = cookies_file_path()
+    items = _parse_cookie_string(raw)
+    lines = [
+        "# 由 data/douyin_cookie.txt 自动生成，请勿手动编辑",
+        "# Netscape HTTP Cookie File",
+        "",
+    ]
+    for name, value in items:
+        # 抖音和 B 站都要，所以同时写给两个域；多写的行 yt-dlp 会忽略
+        for domain in (".douyin.com", ".bilibili.com"):
+            lines.append(
+                "\t".join([domain, "TRUE", "/", "FALSE", "0", name, value]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
 def _cookies_args() -> list[str]:
     path = cookies_file_path()
+    # 用户粘贴过抖音 cookie 但它还没转成文件？先转一次。
+    dz = douyin_cookie_path()
+    if (not (path.exists() and path.stat().st_size > 0)) and dz.exists():
+        try:
+            raw = "\n".join(
+                ln for ln in dz.read_text(encoding="utf-8", errors="replace").splitlines()
+                if ln.strip() and not ln.strip().startswith("#"))
+            if raw:
+                build_cookies_from_string(raw)
+        except Exception:
+            pass
     if path.exists() and path.stat().st_size > 0:
         return ["--cookies", str(path)]
     from_browser = os.environ.get("LISTENUP_COOKIES_FROM_BROWSER")
