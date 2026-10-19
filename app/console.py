@@ -525,6 +525,14 @@ class Console(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("听力训练 · 控制台")
+
+        # 窗口和任务栏图标。iconbitmap 只认 .ico，失败不影响使用。
+        try:
+            _ico = ROOT / "console.ico"
+            if _ico.exists():
+                self.iconbitmap(default=str(_ico))
+        except Exception:  # noqa: BLE001
+            pass
         self.geometry("1120x760")
         self.minsize(940, 640)
         self.configure(bg=BG)
