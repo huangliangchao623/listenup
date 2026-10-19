@@ -105,17 +105,25 @@ def main() -> int:
                 cues_try = []
             if cues_try:
                 span = cues_try[-1].end
-                if span > best_span:
+                # 取「覆盖时长最接近视频时长」的那份：B 站会随机返回
+                # 别的视频的字幕，那些通常明显偏长或偏短
+                if not best_cues or abs(span - want_end) < abs(best_span - want_end):
                     best_span = span
                     best_cues = cues_try
-            if best_span >= want_end * 0.92:
-                break                      # 已经基本完整，不用再试
+                if abs(span - want_end) <= want_end * 0.06:
+                    break                  # 已经贴近了，不用再试
             time.sleep(1.5)
 
         # 清掉临时尝试文件
         for p in CACHE.glob(f"{d.name}.try*.json"):
             try: p.unlink()
             except Exception: pass
+
+        # 覆盖不到一半就放弃：B 站的 AI 字幕有时是别的视频的内容
+        if got_track and abs(best_span - want_end) > want_end * 0.15:
+            print(f"  {d.name[:32]:34} 字幕覆盖 {best_span:.0f}s 与视频 {want_end:.0f}s 差距过大，跳过")
+            skipped += 1
+            continue
 
         if not got_track:
             print(f"  {d.name[:32]:34} 该视频没有中文字幕")

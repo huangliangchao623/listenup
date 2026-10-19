@@ -87,6 +87,17 @@ def _attach_zh(lesson, paths: list) -> object:
             from .sentences import attach_translations
             n = attach_translations(lesson.sentences, cues)
             if n:
+                # 必须重新落盘！_finish() 在返回前就把 lesson.json 写好了，
+                # 这里改的是内存对象，不写回去的话文件里永远没有译文——
+                # 表现为「字幕下载成功但界面上一句中文都没有」。
+                try:
+                    _mf = Path(lesson.media_path).parent / "lesson.json"
+                    _mf.write_text(
+                        json.dumps(lesson.to_dict(), ensure_ascii=False, indent=2),
+                        encoding="utf-8")
+                except Exception:
+                    pass
+            if n:
                 print(f"    中文翻译：{n} 句已对齐")
     except Exception:
         pass
@@ -224,16 +235,71 @@ class Builder:
             except Exception:
                 caption_files = []
 
-        # 中文翻译轨：和英文分开抓，绝不和它抢主字幕
-        if _tracks:
-            zt = sources.pick_chinese_track(_tracks)
-            if zt:
+        # 中文翻译轨：和英文分开抓，绝不和它抢主字幕。
+        #
+        # 这里有两层不稳定，都必须重试：
+        #   1. bilibili_subtitles() 偶尔返回空列表（实测同一视频连调三次，
+        #      第 1 次 0 条、第 2/3 次 1 条）——像是有缓存或限流
+        #   2. 字幕下载每次返回的长度不同（11KB/59KB/133KB，
+        #      覆盖 335s/792s/1687s）
+        # 所以循环里既重新取轨、也重新下载，保留覆盖最广的那份。
+        want_end = float(info.get("duration") or 0.0) or 1e9
+        if platform == "bilibili":
+            # B 站这个接口很离谱：同一个视频每次请求，返回的 ai-zh 字幕
+            # 可能是**完全不同视频**的内容。实测连续 5 次得到覆盖
+            # 836s / 527s / 904s / 180s 四种，只有 527s 那份是对的
+            # （视频本身 528s），其余是别人的 vlog 和广告。
+            #
+            # 判别依据：正确的字幕覆盖时长 ≈ 视频时长。
+            # 所以多试几次，取「覆盖时长最接近视频时长」的那份，
+            # 而不是取最长的——最长的往往就是错得最离谱的。
+            cands: list[tuple[float, list]] = []
+            for _try in range(8):
+                tracks_try = _tracks
+                if _try > 0 or not tracks_try:
+                    try:
+                        tracks_try = sources.bilibili_subtitles(url)
+                    except Exception:
+                        tracks_try = []
+                    _tracks = tracks_try
+                zt = sources.pick_chinese_track(tracks_try) if tracks_try else None
+                if zt:
+                    zd = C.SUB_DIR / f"{lid}.bili.zh.try{_try}.json"
+                    try:
+                        sources.download_bilibili_subtitle(zt, zd)
+                        cues_try = captions.parse_any(zd)
+                        zd.unlink(missing_ok=True)
+                    except Exception:
+                        cues_try = []
+                    if cues_try:
+                        cands.append((cues_try[-1].end, cues_try))
+                        # 已经找到贴近视频时长的，不用再试
+                        if abs(cues_try[-1].end - want_end) <= want_end * 0.06:
+                            break
+                time.sleep(1.0)
+
+            best: list = []
+            best_span = 0.0
+            if cands:
+                best_span, best = min(cands, key=lambda c: abs(c[0] - want_end))
+            # 覆盖度门槛：B 站的 AI 字幕数据有时候是错的——实测有个视频
+            # 返回的是完全无关的做饭视频字幕，而且只覆盖 34% 时长。
+            # 错误的译文比没有译文更糟，所以覆盖不到一半就直接放弃。
+            # 偏离视频时长超过 15% 的一律不用——宁可不显示，也不能显示别的视频的字幕
+            if best and abs(best_span - want_end) > want_end * 0.15:
+                best = []
+            if best:
+                zd_final = C.SUB_DIR / f"{lid}.bili.zh.json"
                 try:
-                    zd = C.SUB_DIR / f"{lid}.bili.zh.json"
-                    sources.download_bilibili_subtitle(zt, zd)
-                    zh_files.append(zd)
+                    zd_final.write_text(
+                        json.dumps({"body": [
+                            {"from": c.start, "to": c.end, "content": c.text}
+                            for c in best]}, ensure_ascii=False),
+                        encoding="utf-8")
+                    zh_files.append(zd_final)
                 except Exception:
                     pass
+
         if not zh_files and platform not in sources.NO_CAPTION_PLATFORMS:
             try:
                 zh_files = sources.download_subtitles(
